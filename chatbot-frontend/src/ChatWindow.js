@@ -1,18 +1,63 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Col, Form, Button, ListGroup } from 'react-bootstrap';
 import MessageBubble from './MessageBubble'; // Import the MessageBubble component
 import './Chatbot.css'; // Import CSS file for animations
 
-const ChatWindow = ({ messages, setMessages, input, setInput, currentConversation, setCurrentConversationId }) => {
+const ChatWindow = ({ messages, setMessages, input, setInput, currentConversation }) => {
   const messagesEndRef = useRef(null);
+  const [socket, setSocket] = useState(null);
+  const [isGeneratingResponse, setIsGeneratingResponse] = useState(false);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  useEffect(() => {
+    if (currentConversation) {
+      const newSocket = new WebSocket(`ws://localhost:8000/ws/conversations/${currentConversation}/messages/ai`);
+  
+      newSocket.onopen = () => {
+        console.log('WebSocket connection opened');
+        setSocket(newSocket);
+      };
+  
+      newSocket.onmessage = (event) => {
+        console.log('WebSocket message received:', event.data);
+        if (event.data === 'GENERATION_COMPLETE') {
+          // If the message is 'GENERATION_COMPLETE', update isGeneratingResponse to false
+          setIsGeneratingResponse(false);
+        } else {
+          setMessages((prevMessages) => {
+            const lastMessage = prevMessages[prevMessages.length - 1];
+            if (lastMessage && lastMessage.user === 'bot') {
+              return [...prevMessages.slice(0, -1), { user: 'bot', text: lastMessage.text + event.data }];
+            } else {
+              return [...prevMessages, { user: 'bot', text: event.data }];
+            }
+          });
+        }
+      };
+  
+      newSocket.onclose = () => {
+        console.log('WebSocket connection closed');
+        setSocket(null);
+        setIsGeneratingResponse(false);
+      };
+  
+      newSocket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        newSocket.close();
+      };
+  
+      return () => {
+        newSocket.close();
+      };
+    }
+  }, [currentConversation, setMessages]);
 
   const sendMessage = async () => {
     if (!currentConversation) {
@@ -38,22 +83,19 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
       setMessages(userMessageData.messages);
       setInput('');
 
-      // Generate AI response
-      const aiResponse = await fetch(`http://localhost:8000/conversations/${currentConversation}/messages/ai`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user: 'You', text: input }), // The message payload can be modified as needed
-      });
-      if (!aiResponse.ok) {
-        console.error('Failed to generate AI response:', aiResponse.statusText);
-        return;
+      setIsGeneratingResponse(true); // Set generating response to true
+
+      // Send new message to WebSocket
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        console.log('Sending message to WebSocket:', input);
+        socket.send(JSON.stringify({ action: 'message', content: input }));
+      } else {
+        console.error('WebSocket is not open');
+        setIsGeneratingResponse(false); // Reset generating response
       }
-      const aiResponseData = await aiResponse.json();
-      setMessages(aiResponseData.messages);
     } catch (error) {
-      console.error('Failed to send message or generate AI response:', error);
+      console.error('Failed to send message:', error);
+      setIsGeneratingResponse(false); // Reset generating response
     }
   };
 
@@ -97,12 +139,23 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown} // Add keydown event handler
             style={{ padding: '10px' }}
-            disabled={!currentConversation} // Disable input if no conversation is selected
+            disabled={!currentConversation || isGeneratingResponse} // Disable input if no conversation is selected
           />
         </Form.Group>
-        <Button variant="primary" type="submit" onClick={sendMessage} style={{ height: '100%', padding: '10px' }} disabled={!currentConversation}>
-          Send
-        </Button>
+        {/* Conditional rendering of send button based on generating response state */}
+        {isGeneratingResponse ? (
+          <Button variant="primary" type="submit" onClick={sendMessage} style={{ height: '100%', padding: '10px' }} disabled={!currentConversation}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-stop" viewBox="0 0 16 16">
+              <path d="M3.5 5A1.5 1.5 0 0 1 5 3.5h6A1.5 1.5 0 0 1 12.5 5v6a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 11zM5 4.5a.5.5 0 0 0-.5.5v6a.5.5 0 0 0 .5.5h6a.5.5 0 0 0 .5-.5V5a.5.5 0 0 0-.5-.5z"/>
+            </svg>
+          </Button>
+        ) : (
+          <Button variant="primary" type="submit" onClick={sendMessage} style={{ height: '100%', padding: '10px' }} disabled={!currentConversation}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-up" viewBox="0 0 16 16">
+              <path fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5"/>
+            </svg>
+          </Button>
+        )}
       </Form>
     </Col>
   );

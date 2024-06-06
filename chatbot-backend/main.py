@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException
+import asyncio
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
@@ -108,7 +109,6 @@ async def list_conversations():
 
 @app.get("/conversations/{conversation_id}")
 async def get_conversation(conversation_id: str):
-    print(conversation_id)
     filename = get_conversation_filename(conversation_id)
     file_path = os.path.join(conversations_dir, filename)
     with open(file_path, 'r') as f:
@@ -142,42 +142,81 @@ async def add_user_message(conversation_id: str, message: Message):
         json.dump(conversation, f)
     return conversation
 
-@app.post("/conversations/{conversation_id}/messages/ai")
-async def generate_ai_response(conversation_id: str, message: Message):
-    filename = get_conversation_filename(conversation_id)
-    file_path = os.path.join(conversations_dir, filename)
-    with open(file_path, 'r') as f:
-        conversation = json.load(f)
+async def async_generator(generator):
+    for item in generator:
+        await asyncio.sleep(0)
+        yield item
 
-    # Format the conversation for llm.create_chat_completion
-    formatted_messages = [{"role": "system", "content": system_prompt}]
-    for msg in conversation["messages"]:
-        role = "user" if msg["user"] != "bot" else "assistant"
-        formatted_messages.append({"role": role, "content": msg["text"]})
-    
-    # Generate a response using the LLAMA model
+@app.websocket("/ws/conversations/{conversation_id}/messages/ai")
+async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
+    await websocket.accept()
+    user_message_queue = asyncio.Queue()  # Queue to hold user messages
+
+    async def handle_message(message):
+        if message.get('action') == 'message':
+            await user_message_queue.put(message['content'])
+
+    async def process_user_messages():
+        while True:
+            user_input = await user_message_queue.get()
+
+            filename = get_conversation_filename(conversation_id)
+            file_path = os.path.join(conversations_dir, filename)
+            with open(file_path, 'r') as f:
+                conversation = json.load(f)
+
+            formatted_messages = [{"role": "system", "content": system_prompt}]
+            for msg in conversation["messages"]:
+                role = "user" if msg["user"] != "bot" else "assistant"
+                formatted_messages.append({"role": role, "content": msg["text"]})
+            formatted_messages.append({"role": "user", "content": user_input})
+
+            try:
+                llama_response = llama_model.create_chat_completion(messages=formatted_messages, stream=True)
+                bot_response_text = ""
+                async for chunk in async_generator(llama_response):
+                    delta = chunk['choices'][0]['delta']
+                    if 'content' in delta:
+                        bot_response_text += delta['content']
+                        await websocket.send_text(delta['content'])
+
+                # Save the LLM message to the conversation
+                conversation["messages"].append({"user": "bot", "text": bot_response_text})
+                with open(file_path, 'w') as f:
+                    json.dump(conversation, f)
+
+                # Send a message to flip the isGeneratingResponse flag to false
+                await websocket.send_text('GENERATION_COMPLETE')
+
+            except Exception as e:
+                await websocket.send_text(f"Failed to get response from LLAMA: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to get response from LLAMA: {e}")
+
     try:
-        llama_response = llama_model.create_chat_completion(messages=formatted_messages)
-        print(llama_response)
-        bot_response_text = llama_response["choices"][0]["message"]["content"]
-        print(bot_response_text)
-        
-        # Add bot's response to the conversation
-        conversation["messages"].append({"user": "bot", "text": bot_response_text})
-    except Exception as e:
-        # If an error occurs during response generation, raise an HTTPException
-        print(e)
-        raise HTTPException(status_code=500, detail=f"Failed to get response from LLAMA: {e}")
+        message_handler_task = asyncio.create_task(process_user_messages())
+        while True:
+            data = await websocket.receive_text()
+            if not data:
+                continue
+            try:
+                message = json.loads(data)
+                await handle_message(message)
+            except json.JSONDecodeError as e:
+                print(f"Error decoding JSON: {e}")
+                await websocket.send_text(f"Error decoding JSON: {e}")
 
-    with open(file_path, 'w') as f:
-        json.dump(conversation, f)
-    return conversation
+    except WebSocketDisconnect:
+        print(f"WebSocket disconnected")
+    finally:
+        message_handler_task.cancel()
+
+
 
 @app.put("/conversations/{conversation_id}/rename")
 async def rename_conversation(conversation_id: str, conversation: Conversation):
     if is_conversation_name_taken(conversation.name):
         raise HTTPException(status_code=400, detail="Conversation name already exists")
-    
+
     index = read_index()
     filename = index.get(conversation_id)
     if not filename:
@@ -186,14 +225,14 @@ async def rename_conversation(conversation_id: str, conversation: Conversation):
     old_file_path = os.path.join(conversations_dir, filename)
     new_filename = f"{conversation.name}.json"
     new_file_path = os.path.join(conversations_dir, new_filename)
-    
+
     if os.path.exists(new_file_path):
         raise HTTPException(status_code=400, detail="Conversation name already exists")
-    
+
     os.rename(old_file_path, new_file_path)
     index[conversation_id] = new_filename
     write_index(index)
-    
+
     # Load the conversation to update the name
     with open(new_file_path, 'r') as f:
         conv_data = json.load(f)
@@ -210,7 +249,7 @@ async def delete_conversation(conversation_id: str):
     file_path = os.path.join(conversations_dir, filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Conversation not found")
-    
+
     os.remove(file_path)
 
     # Remove conversation from index
