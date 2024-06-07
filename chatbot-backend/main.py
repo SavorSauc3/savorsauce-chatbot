@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
@@ -267,6 +267,24 @@ async def rename_conversation(conversation_id: str, conversation: Conversation):
         json.dump(conv_data, f)
 
     return {"id": conversation_id, "name": conversation.name}
+
+@app.put("/conversations/{conversation_id}/messages/{message_index}")
+async def edit_message(conversation_id: str, message_index: int, message: Message = Body(...)):
+    filename = get_conversation_filename(conversation_id)
+    file_path = os.path.join(conversations_dir, filename)
+    
+    with open(file_path, 'r') as f:
+        conversation = json.load(f)
+    
+    if message_index < 0 or message_index >= len(conversation["messages"]):
+        raise HTTPException(status_code=400, detail="Invalid message index")
+    
+    conversation["messages"][message_index] = {"user": message.user, "text": message.text}
+    
+    with open(file_path, 'w') as f:
+        json.dump(conversation, f)
+    
+    return conversation
 
 @app.delete("/conversations/{conversation_id}")
 async def delete_conversation(conversation_id: str):

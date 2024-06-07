@@ -64,7 +64,7 @@
     }
   }
   
-  .copy-button {
+  .copy-button, .edit-button {
     position: absolute;
     bottom: 5px;
     left: 5px;
@@ -76,8 +76,12 @@
     transition: opacity 0.3s ease;
   }
   
-  .copy-button.show {
+  .copy-button.show, .edit-button.show {
     opacity: 1;
+  }
+  
+  .edit-button {
+    left: 25px; /* Adjust this value to position the edit button next to the copy button */
   }
 
   .icon-enter {

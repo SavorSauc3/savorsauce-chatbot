@@ -117,6 +117,15 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
     }
   };
 
+  const handleEdit = (index, newText) => {
+    setMessages((prevMessages) => {
+      const updatedMessages = [...prevMessages];
+      updatedMessages[index] = { ...updatedMessages[index], text: newText };
+      console.log("Set text to ", newText)
+      return updatedMessages;
+    });
+  };
+
   return (
     <Col style={{ display: 'flex', flexDirection: 'column', height: '95vh', width: '100%', padding: '0' }}>
       <div style={{ flex: '1', overflowY: 'auto', marginBottom: '20px', padding: '5px' }}>
@@ -127,7 +136,13 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
                 key={idx}
                 className={`d-flex justify-content-${msg.user === 'You' ? 'end' : 'start'}`}
               >
-                <MessageBubble msg={msg.text} user={msg.user} />
+                  <MessageBubble
+                    msg={msg.text}
+                    user={msg.user}
+                    conversationId={currentConversation}
+                    messageIndex={idx}
+                    onEdit={(newText) => handleEdit(idx, newText)}
+                  />
               </ListGroup.Item>
             ))}
           </ListGroup>
@@ -161,7 +176,7 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
             >
               {isGeneratingResponse ? (
                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-stop" viewBox="0 0 16 16">
-                  <path d="M3.5 5A1.5 1.5 0 0 1 5 3.5h6A1.5 1.5 0 0 1 12.5 5v6a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 11zM5 4.5a.5.5 0 0 0-.5.5v6a.5.5 0 0 0 .5.5h6a.5.5 0 0 0 .5-.5V5a.5.5 0 0 0-.5-.5z"/>
+                  <path d="M3.5 5A1.5 1.5 0 0 1 5 3.5h6A1.5 1.5 0 0 1 12.5 5v6a.5.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 11zM5 4.5a.5.5 0 0 0-.5.5v6a.5.5 0 0 0 .5.5h6a.5.5 0 0 0 .5-.5V5a.5.5 0 0 0-.5-.5z"/>
                 </svg>
               ) : (
                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" className="bi bi-arrow-up" viewBox="0 0 16 16">
