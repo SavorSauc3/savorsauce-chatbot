@@ -151,12 +151,18 @@ async def async_generator(generator):
 async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
     await websocket.accept()
     user_message_queue = asyncio.Queue()  # Queue to hold user messages
+    is_generating = False
+    bot_response_text = ""  # To store the in-progress bot response
 
     async def handle_message(message):
         if message.get('action') == 'message':
             await user_message_queue.put(message['content'])
+        elif message.get('action') == 'stop_generation':
+            nonlocal is_generating
+            is_generating = False
 
     async def process_user_messages():
+        nonlocal is_generating, bot_response_text
         while True:
             user_input = await user_message_queue.get()
 
@@ -174,19 +180,27 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
             try:
                 llama_response = llama_model.create_chat_completion(messages=formatted_messages, stream=True)
                 bot_response_text = ""
+                is_generating = True
                 async for chunk in async_generator(llama_response):
+                    if not is_generating:
+                        break
                     delta = chunk['choices'][0]['delta']
                     if 'content' in delta:
                         bot_response_text += delta['content']
                         await websocket.send_text(delta['content'])
 
-                # Save the LLM message to the conversation
+                # Save the LLM message to the conversation even if stopped
                 conversation["messages"].append({"user": "bot", "text": bot_response_text})
                 with open(file_path, 'w') as f:
                     json.dump(conversation, f)
 
-                # Send a message to flip the isGeneratingResponse flag to false
-                await websocket.send_text('GENERATION_COMPLETE')
+                if is_generating:
+                    await websocket.send_text('GENERATION_COMPLETE')
+                    bot_response_text = None
+                else:
+                    await websocket.send_text('GENERATION_STOPPED')
+                    bot_response_text = None
+                is_generating = False
 
             except Exception as e:
                 await websocket.send_text(f"Failed to get response from LLAMA: {e}")
@@ -209,6 +223,17 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
         print(f"WebSocket disconnected")
     finally:
         message_handler_task.cancel()
+
+        # Save the in-progress bot response when the WebSocket closes
+        if bot_response_text:
+            filename = get_conversation_filename(conversation_id)
+            file_path = os.path.join(conversations_dir, filename)
+            with open(file_path, 'r') as f:
+                conversation = json.load(f)
+            conversation["messages"].append({"user": "bot", "text": bot_response_text})
+            with open(file_path, 'w') as f:
+                json.dump(conversation, f)
+        print(f"Saved in-progress bot response to conversation {conversation_id}")
 
 
 

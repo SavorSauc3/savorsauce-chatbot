@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Col, Form, Button, ListGroup } from 'react-bootstrap';
 import MessageBubble from './MessageBubble'; // Import the MessageBubble component
+import { CSSTransition, SwitchTransition } from 'react-transition-group';
 import './Chatbot.css'; // Import CSS file for animations
 
 const ChatWindow = ({ messages, setMessages, input, setInput, currentConversation }) => {
@@ -19,16 +20,17 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
   useEffect(() => {
     if (currentConversation) {
       const newSocket = new WebSocket(`ws://localhost:8000/ws/conversations/${currentConversation}/messages/ai`);
-  
+
       newSocket.onopen = () => {
         console.log('WebSocket connection opened');
         setSocket(newSocket);
       };
-  
+
       newSocket.onmessage = (event) => {
         console.log('WebSocket message received:', event.data);
         if (event.data === 'GENERATION_COMPLETE') {
-          // If the message is 'GENERATION_COMPLETE', update isGeneratingResponse to false
+          setIsGeneratingResponse(false);
+        } else if (event.data === 'GENERATION_STOPPED') {
           setIsGeneratingResponse(false);
         } else {
           setMessages((prevMessages) => {
@@ -41,18 +43,18 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
           });
         }
       };
-  
+
       newSocket.onclose = () => {
         console.log('WebSocket connection closed');
         setSocket(null);
         setIsGeneratingResponse(false);
       };
-  
+
       newSocket.onerror = (error) => {
         console.error('WebSocket error:', error);
         newSocket.close();
       };
-  
+
       return () => {
         newSocket.close();
       };
@@ -64,10 +66,20 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
       console.error("No conversation selected");
       return;
     }
-    if (input.trim() === '') return; // Do not send empty messages
+    if (input.trim() === '' && isGeneratingResponse === false) return;
+
+    if (isGeneratingResponse) {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        console.log('Sending STOP_GENERATION signal to WebSocket');
+        socket.send(JSON.stringify({ action: 'stop_generation' }));
+        setIsGeneratingResponse(false);
+      } else {
+        console.error('WebSocket is not open');
+      }
+      return;
+    }
 
     try {
-      // Add user message
       const userMessageResponse = await fetch(`http://localhost:8000/conversations/${currentConversation}/messages/user`, {
         method: 'POST',
         headers: {
@@ -83,26 +95,25 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
       setMessages(userMessageData.messages);
       setInput('');
 
-      setIsGeneratingResponse(true); // Set generating response to true
+      setIsGeneratingResponse(true);
 
-      // Send new message to WebSocket
       if (socket && socket.readyState === WebSocket.OPEN) {
         console.log('Sending message to WebSocket:', input);
         socket.send(JSON.stringify({ action: 'message', content: input }));
       } else {
         console.error('WebSocket is not open');
-        setIsGeneratingResponse(false); // Reset generating response
+        setIsGeneratingResponse(false);
       }
     } catch (error) {
       console.error('Failed to send message:', error);
-      setIsGeneratingResponse(false); // Reset generating response
+      setIsGeneratingResponse(false);
     }
   };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault(); // Prevent default behavior (new line)
-      sendMessage(); // Send message
+      e.preventDefault();
+      sendMessage();
     }
   };
 
@@ -116,7 +127,6 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
                 key={idx}
                 className={`d-flex justify-content-${msg.user === 'You' ? 'end' : 'start'}`}
               >
-                {/* Use the MessageBubble component */}
                 <MessageBubble msg={msg.text} user={msg.user} />
               </ListGroup.Item>
             ))}
@@ -137,25 +147,30 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
             placeholder="Type a message"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown} // Add keydown event handler
+            onKeyDown={handleKeyDown}
             style={{ padding: '10px' }}
-            disabled={!currentConversation || isGeneratingResponse} // Disable input if no conversation is selected
+            disabled={!currentConversation || isGeneratingResponse}
           />
         </Form.Group>
-        {/* Conditional rendering of send button based on generating response state */}
-        {isGeneratingResponse ? (
-          <Button variant="primary" type="submit" onClick={sendMessage} style={{ height: '100%', padding: '10px' }} disabled={!currentConversation}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-stop" viewBox="0 0 16 16">
-              <path d="M3.5 5A1.5 1.5 0 0 1 5 3.5h6A1.5 1.5 0 0 1 12.5 5v6a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 11zM5 4.5a.5.5 0 0 0-.5.5v6a.5.5 0 0 0 .5.5h6a.5.5 0 0 0 .5-.5V5a.5.5 0 0 0-.5-.5z"/>
-            </svg>
-          </Button>
-        ) : (
-          <Button variant="primary" type="submit" onClick={sendMessage} style={{ height: '100%', padding: '10px' }} disabled={!currentConversation}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-up" viewBox="0 0 16 16">
-              <path fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5"/>
-            </svg>
-          </Button>
-        )}
+        <Button variant="primary" type="submit" onClick={sendMessage} style={{ height: '100%', padding: '10px' }} disabled={!currentConversation}>
+          <SwitchTransition>
+            <CSSTransition
+              key={isGeneratingResponse ? "stop" : "send"}
+              timeout={300}
+              classNames="icon"
+            >
+              {isGeneratingResponse ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-stop" viewBox="0 0 16 16">
+                  <path d="M3.5 5A1.5 1.5 0 0 1 5 3.5h6A1.5 1.5 0 0 1 12.5 5v6a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 11zM5 4.5a.5.5 0 0 0-.5.5v6a.5.5 0 0 0 .5.5h6a.5.5 0 0 0 .5-.5V5a.5.5 0 0 0-.5-.5z"/>
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" className="bi bi-arrow-up" viewBox="0 0 16 16">
+                  <path fillRule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5"/>
+                </svg>
+              )}
+            </CSSTransition>
+          </SwitchTransition>
+        </Button>
       </Form>
     </Col>
   );
