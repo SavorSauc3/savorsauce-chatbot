@@ -144,7 +144,7 @@ async def add_user_message(conversation_id: str, message: Message):
 
 async def async_generator(generator):
     for item in generator:
-        await asyncio.sleep(0)
+        await asyncio.sleep(0)  # Yield control to the event loop
         yield item
 
 @app.websocket("/ws/conversations/{conversation_id}/messages/ai")
@@ -157,56 +157,60 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
     bot_response_text = ""  # To store the in-progress bot response
 
     async def handle_message(message):
+        nonlocal generation_type, is_generating
         if message.get('action') == 'message':
+            print("Recieved message from user")
             await user_message_queue.put(message['content'])
         elif message.get('action') == 'stop_generation':
-            nonlocal is_generating
+            print("Recieved stop generation signal")
             is_generating = False
         elif message.get('action') == 'regenerate':
+            generation_type = 'regenerate'
+            print("Recieved regenerate signal")
             await regenerate_message(message['messageIndex'])
 
     async def regenerate_message(message_index):
         nonlocal is_generating, bot_response_text, generation_type, global_message_index
-        filename = get_conversation_filename(conversation_id)
-        file_path = os.path.join(conversations_dir, filename)
-        generation_type = 'regenerate'
-        global_message_index = message_index
-        with open(file_path, 'r') as f:
-            conversation = json.load(f)
+        while True:
+            filename = get_conversation_filename(conversation_id)
+            file_path = os.path.join(conversations_dir, filename)
+            global_message_index = message_index
+            with open(file_path, 'r') as f:
+                conversation = json.load(f)
 
-        formatted_messages = [{"role": "system", "content": system_prompt}]
-        for idx, msg in enumerate(conversation["messages"][:message_index]):
-            role = "user" if msg["user"] != "bot" else "assistant"
-            formatted_messages.append({"role": role, "content": msg["text"]})
+            formatted_messages = [{"role": "system", "content": system_prompt}]
+            for idx, msg in enumerate(conversation["messages"][:message_index]):
+                role = "user" if msg["user"] != "bot" else "assistant"
+                formatted_messages.append({"role": role, "content": msg["text"]})
 
-        try:
-            llama_response = llama_model.create_chat_completion(messages=formatted_messages, stream=True)
-            bot_response_text = ""
-            is_generating = True
-            async for chunk in async_generator(llama_response):
-                if not is_generating:
-                    break
-                delta = chunk['choices'][0]['delta']
-                if 'content' in delta:
-                    bot_response_text += delta['content']
-                    await websocket.send_text(delta['content'])
+            try:
+                llama_response = llama_model.create_chat_completion(messages=formatted_messages, stream=True)
+                bot_response_text = ""
+                is_generating = True
+                async for chunk in async_generator(llama_response):
+                    if not is_generating:
+                        break
+                    delta = chunk['choices'][0]['delta']
+                    if 'content' in delta:
+                        bot_response_text += delta['content']
+                        await websocket.send_text(delta['content'])
 
-            # Overwrite the previous message at the specified index
-            conversation["messages"][message_index] = {"user": "bot", "text": bot_response_text}
-            with open(file_path, 'w') as f:
-                json.dump(conversation, f)
+                # Overwrite the previous message at the specified index
+                conversation["messages"][message_index] = {"user": "bot", "text": bot_response_text}
+                with open(file_path, 'w') as f:
+                    json.dump(conversation, f)
 
-            if is_generating:
-                await websocket.send_text('GENERATION_COMPLETE')
-                bot_response_text = None
-            else:
-                await websocket.send_text('GENERATION_STOPPED')
-                bot_response_text = None
-            is_generating = False
+                if is_generating:
+                    await websocket.send_text('GENERATION_COMPLETE')
+                    bot_response_text = None
+                else:
+                    await websocket.send_text('GENERATION_STOPPED')
+                    bot_response_text = None
+                is_generating = False
 
-        except Exception as e:
-            await websocket.send_text(f"Failed to get response from LLAMA: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to get response from LLAMA: {e}")
+            except Exception as e:
+                await websocket.send_text(f"Failed to get response from LLAMA: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to get response from LLAMA: {e}")
 
     async def process_user_messages():
         nonlocal is_generating, bot_response_text, generation_type
@@ -255,7 +259,10 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
                 raise HTTPException(status_code=500, detail=f"Failed to get response from LLAMA: {e}")
 
     try:
-        message_handler_task = asyncio.create_task(process_user_messages())
+        if not generation_type:
+            message_handler_task = asyncio.create_task(process_user_messages())
+        elif generation_type == 'regenerate':
+            message_handler_task = asyncio.create_task(regenerate_message())
         while True:
             data = await websocket.receive_text()
             if not data:

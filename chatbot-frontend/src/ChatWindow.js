@@ -76,8 +76,7 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
       } else {
         console.error('WebSocket is not open');
       }
-      // Return here to prevent sending a new message while the stop signal is being processed
-      return;
+      return; // Return here to prevent sending a new message while the stop signal is being processed
     }
   
     try {
@@ -176,15 +175,15 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
                 key={idx}
                 className={`d-flex justify-content-${msg.user === 'You' ? 'end' : 'start'}`}
               >
-                  <MessageBubble
-                    msg={msg.text}
-                    user={msg.user}
-                    conversationId={currentConversation}
-                    messageIndex={idx}
-                    onEdit={(newText) => handleEdit(idx, newText)}
-                    onRegenerate={() => handleRegenerate(idx)}
-                    isGenerating={isGeneratingResponse}
-                  />
+                <MessageBubble
+                  msg={msg.text}
+                  user={msg.user}
+                  conversationId={currentConversation}
+                  messageIndex={idx}
+                  onEdit={(newText) => handleEdit(idx, newText)}
+                  onRegenerate={() => handleRegenerate(idx)}
+                  isGenerating={isGeneratingResponse}
+                />
               </ListGroup.Item>
             ))}
           </ListGroup>
