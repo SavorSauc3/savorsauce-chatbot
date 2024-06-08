@@ -64,7 +64,7 @@
     }
   }
   
-  .copy-button, .edit-button {
+  .copy-button, .edit-button, .regenerate-button {
     position: absolute;
     bottom: 5px;
     left: 5px;
@@ -76,13 +76,22 @@
     transition: opacity 0.3s ease;
   }
   
-  .copy-button.show, .edit-button.show {
+.copy-button.show, .edit-button.show, .regenerate-button.show {
     opacity: 1;
-  }
-  
-  .edit-button {
+}
+
+.edit-button {
     left: 25px; /* Adjust this value to position the edit button next to the copy button */
-  }
+}
+
+.regenerate-button {
+    left: 25px; /* Adjust this value to position the regenerate button next to the edit button */
+}
+
+.regenerate-button[disabled].show {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
 
   .icon-enter {
     opacity: 0;

@@ -4,7 +4,7 @@ import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Tooltip, OverlayTrigger, Form, Button } from 'react-bootstrap';
 import './Chatbot.css'; // Import CSS file for animations
 
-const MessageBubble = ({ msg, user, onEdit, conversationId, messageIndex }) => {
+const MessageBubble = ({ msg, user, onEdit, conversationId, messageIndex, onRegenerate, isGenerating }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -55,6 +55,12 @@ const MessageBubble = ({ msg, user, onEdit, conversationId, messageIndex }) => {
   const handleEditCancel = () => {
     setIsEditing(false);
     setEditText(msg); // Reset edit text to original message
+  };
+
+  const handleRegenerate = () => {
+    if (!isGenerating) {
+      onRegenerate();
+    }
   };
 
   return (
@@ -109,6 +115,23 @@ const MessageBubble = ({ msg, user, onEdit, conversationId, messageIndex }) => {
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-pen" viewBox="0 0 16 16">
                   <path d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001m-.644.766a.5.5 0 0 0-.707 0L1.95 11.756l-.764 3.057 3.057-.764L14.44 3.854a.5.5 0 0 0 0-.708z"/>
+                </svg>
+              </button>
+            </OverlayTrigger>
+          )}
+          {user === 'bot' && (
+            <OverlayTrigger
+              placement="bottom"
+              overlay={<Tooltip id="tooltip-regenerate">Regenerate text</Tooltip>}
+            >
+              <button
+                className={`regenerate-button ${isHovered ? 'show' : ''}`}
+                onClick={handleRegenerate}
+                disabled={isGenerating}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bootstrap-reboot" viewBox="0 0 16 16">
+                  <path d="M1.161 8a6.84 6.84 0 1 0 6.842-6.84.58.58 0 1 1 0-1.16 8 8 0 1 1-6.556 3.412l-.663-.577a.58.58 0 0 1 .227-.997l2.52-.69a.58.58 0 0 1 .728.633l-.332 2.592a.58.58 0 0 1-.956.364l-.643-.56A6.8 6.8 0 0 0 1.16 8z"/>
+                  <path d="M6.641 11.671V8.843h1.57l1.498 2.828h1.314L9.377 8.665c.897-.3 1.427-1.106 1.427-2.1 0-1.37-.943-2.246-2.456-2.246H5.5v7.352zm0-3.75V5.277h1.57c.881 0 1.416.499 1.416 1.32 0 .84-.504 1.324-1.386 1.324z"/>
                 </svg>
               </button>
             </OverlayTrigger>

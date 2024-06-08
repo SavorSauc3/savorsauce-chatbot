@@ -67,7 +67,7 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
       return;
     }
     if (input.trim() === '' && isGeneratingResponse === false) return;
-
+  
     if (isGeneratingResponse) {
       if (socket && socket.readyState === WebSocket.OPEN) {
         console.log('Sending STOP_GENERATION signal to WebSocket');
@@ -76,9 +76,10 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
       } else {
         console.error('WebSocket is not open');
       }
+      // Return here to prevent sending a new message while the stop signal is being processed
       return;
     }
-
+  
     try {
       const userMessageResponse = await fetch(`http://localhost:8000/conversations/${currentConversation}/messages/user`, {
         method: 'POST',
@@ -94,9 +95,9 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
       const userMessageData = await userMessageResponse.json();
       setMessages(userMessageData.messages);
       setInput('');
-
+  
       setIsGeneratingResponse(true);
-
+  
       if (socket && socket.readyState === WebSocket.OPEN) {
         console.log('Sending message to WebSocket:', input);
         socket.send(JSON.stringify({ action: 'message', content: input }));
@@ -121,9 +122,48 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
     setMessages((prevMessages) => {
       const updatedMessages = [...prevMessages];
       updatedMessages[index] = { ...updatedMessages[index], text: newText };
-      console.log("Set text to ", newText)
       return updatedMessages;
     });
+  };
+
+  const handleRegenerate = (index) => {
+    setIsGeneratingResponse(true);
+    setMessages((prevMessages) => {
+      const messageToUpdate = prevMessages[index];
+      const newSocket = socket;
+  
+      if (newSocket && newSocket.readyState === WebSocket.OPEN) {
+        newSocket.send(JSON.stringify({ action: 'regenerate', messageIndex: index }));
+      } else {
+        console.error('WebSocket is not open');
+      }
+  
+      // Empty the text of the message bubble corresponding to the index
+      const updatedMessages = [...prevMessages];
+      updatedMessages[index] = { ...messageToUpdate, text: '' };
+      return updatedMessages;
+    });
+  
+    // Handle incoming WebSocket messages for the regeneration process
+    if (socket) {
+      socket.onmessage = (event) => {
+        console.log('WebSocket message received:', event.data);
+        if (event.data === 'GENERATION_COMPLETE') {
+          setIsGeneratingResponse(false);
+        } else if (event.data === 'GENERATION_STOPPED') {
+          setIsGeneratingResponse(false);
+        } else {
+          setMessages((prevMessages) => {
+            const updatedMessages = [...prevMessages];
+            const regeneratingMessage = updatedMessages[index];
+            if (regeneratingMessage) {
+              updatedMessages[index] = { ...regeneratingMessage, text: regeneratingMessage.text + event.data };
+            }
+            return updatedMessages;
+          });
+        }
+      };
+    }
   };
 
   return (
@@ -142,6 +182,8 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
                     conversationId={currentConversation}
                     messageIndex={idx}
                     onEdit={(newText) => handleEdit(idx, newText)}
+                    onRegenerate={() => handleRegenerate(idx)}
+                    isGenerating={isGeneratingResponse}
                   />
               </ListGroup.Item>
             ))}
