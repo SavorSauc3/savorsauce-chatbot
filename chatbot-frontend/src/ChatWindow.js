@@ -2,12 +2,13 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Col, Form, Button, ListGroup } from 'react-bootstrap';
 import MessageBubble from './MessageBubble'; // Import the MessageBubble component
 import { CSSTransition, SwitchTransition } from 'react-transition-group';
-import './Chatbot.css'; // Import CSS file for animations
+import './css/Chatbot.css'; // Import CSS file for animations
 
 const ChatWindow = ({ messages, setMessages, input, setInput, currentConversation }) => {
   const messagesEndRef = useRef(null);
   const [socket, setSocket] = useState(null);
   const [isGeneratingResponse, setIsGeneratingResponse] = useState(false);
+  const [streamType, setStreamType] = useState(null); // New state variable for stream type
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -17,7 +18,7 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  useEffect(() => {
+  const openNewSocket = useCallback(() => {
     if (currentConversation) {
       const newSocket = new WebSocket(`ws://localhost:8000/ws/conversations/${currentConversation}/messages/ai`);
 
@@ -28,10 +29,9 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
 
       newSocket.onmessage = (event) => {
         console.log('WebSocket message received:', event.data);
-        if (event.data === 'GENERATION_COMPLETE') {
+        if (event.data === 'GENERATION_COMPLETE' || event.data === 'GENERATION_STOPPED') {
           setIsGeneratingResponse(false);
-        } else if (event.data === 'GENERATION_STOPPED') {
-          setIsGeneratingResponse(false);
+          setStreamType(null); // Reset stream type
         } else {
           setMessages((prevMessages) => {
             const lastMessage = prevMessages[prevMessages.length - 1];
@@ -48,6 +48,7 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
         console.log('WebSocket connection closed');
         setSocket(null);
         setIsGeneratingResponse(false);
+        setStreamType(null); // Reset stream type
       };
 
       newSocket.onerror = (error) => {
@@ -55,30 +56,33 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
         newSocket.close();
       };
 
-      return () => {
-        newSocket.close();
-      };
+      return newSocket;
     }
   }, [currentConversation, setMessages]);
 
-  const sendMessage = async () => {
+  useEffect(() => {
+    if (currentConversation) {
+      const newSocket = openNewSocket();
+      return () => {
+        if (newSocket) {
+          newSocket.close();
+        }
+      };
+    }
+  }, [currentConversation, openNewSocket]);
+
+  const sendMessageNew = async () => {
     if (!currentConversation) {
       console.error("No conversation selected");
       return;
     }
     if (input.trim() === '' && isGeneratingResponse === false) return;
-  
+
     if (isGeneratingResponse) {
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        console.log('Sending STOP_GENERATION signal to WebSocket');
-        socket.send(JSON.stringify({ action: 'stop_generation' }));
-        setIsGeneratingResponse(false);
-      } else {
-        console.error('WebSocket is not open');
-      }
+      sendMessageRegenerate();
       return; // Return here to prevent sending a new message while the stop signal is being processed
     }
-  
+
     try {
       const userMessageResponse = await fetch(`http://localhost:8000/conversations/${currentConversation}/messages/user`, {
         method: 'POST',
@@ -94,26 +98,43 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
       const userMessageData = await userMessageResponse.json();
       setMessages(userMessageData.messages);
       setInput('');
-  
+
       setIsGeneratingResponse(true);
-  
+      setStreamType('new'); // Set stream type to new
+
       if (socket && socket.readyState === WebSocket.OPEN) {
         console.log('Sending message to WebSocket:', input);
         socket.send(JSON.stringify({ action: 'message', content: input }));
       } else {
         console.error('WebSocket is not open');
         setIsGeneratingResponse(false);
+        setStreamType(null); // Reset stream type
       }
     } catch (error) {
       console.error('Failed to send message:', error);
       setIsGeneratingResponse(false);
+      setStreamType(null); // Reset stream type
+    }
+  };
+
+  const sendMessageRegenerate = () => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      console.log('Closing current WebSocket connection for regeneration');
+      socket.close();
+      setIsGeneratingResponse(false);
+      setStreamType(null); // Reset stream type
+      setTimeout(() => {
+        openNewSocket();
+      }, 100); // Adding a slight delay before reopening the socket
+    } else {
+      console.error('WebSocket is not open');
     }
   };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      streamType === 'regenerate' ? sendMessageRegenerate() : sendMessageNew();
     }
   };
 
@@ -127,30 +148,30 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
 
   const handleRegenerate = (index) => {
     setIsGeneratingResponse(true);
+    setStreamType('regenerate'); // Set stream type to regenerate
     setMessages((prevMessages) => {
       const messageToUpdate = prevMessages[index];
       const newSocket = socket;
-  
+
       if (newSocket && newSocket.readyState === WebSocket.OPEN) {
         newSocket.send(JSON.stringify({ action: 'regenerate', messageIndex: index }));
       } else {
         console.error('WebSocket is not open');
       }
-  
+
       // Empty the text of the message bubble corresponding to the index
       const updatedMessages = [...prevMessages];
       updatedMessages[index] = { ...messageToUpdate, text: '' };
       return updatedMessages;
     });
-  
+
     // Handle incoming WebSocket messages for the regeneration process
     if (socket) {
       socket.onmessage = (event) => {
         console.log('WebSocket message received:', event.data);
-        if (event.data === 'GENERATION_COMPLETE') {
+        if (event.data === 'GENERATION_COMPLETE' || event.data === 'GENERATION_STOPPED') {
           setIsGeneratingResponse(false);
-        } else if (event.data === 'GENERATION_STOPPED') {
-          setIsGeneratingResponse(false);
+          setStreamType(null); // Reset stream type
         } else {
           setMessages((prevMessages) => {
             const updatedMessages = [...prevMessages];
@@ -208,7 +229,13 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
             disabled={!currentConversation || isGeneratingResponse}
           />
         </Form.Group>
-        <Button variant="primary" type="submit" onClick={sendMessage} style={{ height: '100%', padding: '10px' }} disabled={!currentConversation}>
+        <Button
+          variant="primary"
+          type="submit"
+          onClick={streamType === 'regenerate' ? sendMessageRegenerate : sendMessageNew}
+          style={{ height: '100%', padding: '10px' }}
+          disabled={!currentConversation}
+        >
           <SwitchTransition>
             <CSSTransition
               key={isGeneratingResponse ? "stop" : "send"}
@@ -216,7 +243,7 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
               classNames="icon"
             >
               {isGeneratingResponse ? (
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-stop" viewBox="0 0 16 16">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" className="bi bi-stop" viewBox="0 0 16 16">
                   <path d="M3.5 5A1.5 1.5 0 0 1 5 3.5h6A1.5 1.5 0 0 1 12.5 5v6a.5.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 11zM5 4.5a.5.5 0 0 0-.5.5v6a.5.5 0 0 0 .5.5h6a.5.5 0 0 0 .5-.5V5a.5.5 0 0 0-.5-.5z"/>
                 </svg>
               ) : (

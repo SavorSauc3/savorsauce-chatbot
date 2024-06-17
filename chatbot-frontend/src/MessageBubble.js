@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Tooltip, OverlayTrigger, Form, Button } from 'react-bootstrap';
-import './Chatbot.css'; // Import CSS file for animations
+import './css/Chatbot.css'; // Import CSS file for animations
 
 const MessageBubble = ({ msg, user, onEdit, conversationId, messageIndex, onRegenerate, isGenerating }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -65,7 +65,7 @@ const MessageBubble = ({ msg, user, onEdit, conversationId, messageIndex, onRege
 
   return (
     <div
-      className={`message-bubble ${user === 'You' ? 'user bg-success text-white' : 'bot bg-secondary text-white'}`}
+       className={`message-bubble ${user === 'You' ? 'user bg-success text-white' : 'bot bg-secondary text-white'}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       style={{ position: 'relative' }}

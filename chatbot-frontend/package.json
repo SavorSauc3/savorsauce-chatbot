@@ -7,6 +7,9 @@
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
     "bootstrap": "^5.3.3",
+    "bootswatch": "^5.3.3",
+    "concurrently": "^8.2.2",
+    "npm-run-all": "^4.1.5",
     "react": "^18.3.1",
     "react-bootstrap": "^2.10.2",
     "react-copy-to-clipboard": "^5.1.0",
@@ -14,10 +17,14 @@
     "react-markdown": "^9.0.1",
     "react-scripts": "5.0.1",
     "react-transition-group": "^4.4.5",
+    "sass": "^1.77.5",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "npm-run-all -p watch:sass start:react",
+    "compile:sass": "sass src/scss/Chatbot.scss src/css/Chatbot.css",
+    "watch:sass": "npm run compile:sass -- --watch",
+    "start:react": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
