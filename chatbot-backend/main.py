@@ -18,6 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Directories
 conversations_dir = "conversations"
 models_dir = "models"
@@ -42,6 +43,45 @@ class Message(BaseModel):
 
 class Conversation(BaseModel):
     name: str
+
+
+class Theme(BaseModel):
+    themePath: str
+
+# Define the path to the SCSS file
+SCSS_FILE_PATH = os.path.join("..", "chatbot-frontend", "src", "scss", "Chatbot.scss")
+
+@app.post("/update-theme")
+async def update_theme(theme: Theme):
+    try:
+        # Read the current SCSS file content
+        with open(SCSS_FILE_PATH, "r") as scss_file:
+            lines = scss_file.readlines()
+
+        # Update only the line that contains the import statement
+        with open(SCSS_FILE_PATH, "w") as scss_file:
+            for line in lines:
+                if line.strip().startswith('@import "~bootswatch'):
+                    scss_file.write(f'@import "{theme.themePath}";\n')
+                else:
+                    scss_file.write(line)
+
+        return {"message": "Theme updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update theme: {str(e)}")
+
+    
+@app.get("/current_theme", response_model=Theme)
+async def get_current_theme():
+    try:
+        with open(SCSS_FILE_PATH, "r") as scss_file:
+            for line in scss_file:
+                if line.strip().startswith('@import'):
+                    theme_path = line.strip().split('"')[1]
+                    return {"themePath": theme_path}
+        raise HTTPException(status_code=404, detail="Theme not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch current theme: {str(e)}")
 
 def read_index():
     with open(index_file, 'r') as f:

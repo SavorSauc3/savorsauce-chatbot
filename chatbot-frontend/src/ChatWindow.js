@@ -209,7 +209,7 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
             ))}
           </ListGroup>
         ) : (
-          <div className="d-flex flex-column justify-content-center align-items-center border border-info rounded p-5 bg-dark" style={{ height: '100%' }}>
+          <div className="d-flex flex-column justify-content-center align-items-center border border-info rounded p-5 bg-gray-700" style={{ height: '100%' }}>
             <h3 className="mb-2">Select another conversation,</h3>
             <h3>or create a new one</h3>
           </div>
