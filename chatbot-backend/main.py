@@ -1,11 +1,12 @@
 import asyncio
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
 import json
 import uuid
 import uvicorn
+import subprocess
 from llama_cpp import Llama
 
 app = FastAPI()
@@ -22,6 +23,7 @@ app.add_middleware(
 # Directories
 conversations_dir = "conversations"
 models_dir = "models"
+model_metadata_dir = "models/model_metadata.json"
 index_file = os.path.join(conversations_dir, "index.json")
 
 # Models
@@ -109,10 +111,76 @@ def is_conversation_name_taken(name):
     return False
 
 # Initialize the LLAMA model
-def init_model(model_name=default_model):
+def init_model(model_name=default_model, use_cuda=False, n_gpu_layers=None, context_length=None):
     global current_model
     current_model = model_name
-    return Llama(model_path=f"./models/{model_name}")
+
+    # Check if model metadata exists in the JSON file
+    if not os.path.exists(model_metadata_dir):
+        initialize_metadata_file()
+    
+    with open(model_metadata_dir, 'r') as json_file:
+        metadata = json.load(json_file)
+
+    # Initialize the model
+    model_kwargs = {
+        "model_path": f"./models/{model_name}",
+        "verbose": False
+    }
+
+    if use_cuda:
+        model_kwargs["n_gpu_layers"] = n_gpu_layers if n_gpu_layers is not None else -1
+
+    if context_length is not None:
+        model_kwargs["n_ctx"] = context_length
+
+    model = Llama(**model_kwargs,)
+    
+    if not get_metadata(model_name):
+        model_metadata = model.metadata
+
+        # Convert string numbers to integers
+        model_metadata = convert_strings_to_ints(model_metadata)
+
+        # Update metadata
+        metadata[model_name] = model_metadata
+
+        # Write updated metadata back to the file
+        with open(model_metadata_dir, 'w') as json_file:
+            json.dump(metadata, json_file, indent=2)
+
+    return model
+
+
+
+def convert_strings_to_ints(d):
+    """
+    Recursively convert string representations of numbers to integers in a dictionary.
+    """
+    for key, value in d.items():
+        if isinstance(value, str) and value.isdigit():
+            d[key] = int(value)
+        elif isinstance(value, dict):
+            d[key] = convert_strings_to_ints(value)
+    return d
+
+def initialize_metadata_file():
+    # Initialize an empty metadata file if it doesn't exist
+    with open(model_metadata_dir, 'w') as json_file:
+        json.dump({}, json_file)
+
+def get_metadata(model_name):
+    try:
+        with open(model_metadata_dir, 'r') as json_file:
+            metadata = json.load(json_file)
+            return metadata.get(model_name, None)
+    except FileNotFoundError:
+        return None
+
+@app.get("/{model_name}/metadata")
+async def get_model_metadata(model_name: str):
+    model_metadata = get_metadata(model_name)
+    return model_metadata
 
 # Load the model once during startup
 llama_model = init_model()
@@ -133,6 +201,10 @@ async def create_conversation():
 @app.get("/default_model")
 async def get_default_model():
     return {"default_model": default_model}
+
+@app.get("/current_model")
+async def get_current_model():
+    return {"current_model": current_model, "model_metadata": get_metadata(current_model)}
 
 @app.get("/conversations")
 async def list_conversations():
@@ -163,11 +235,31 @@ async def list_models():
             models.append(filename)
     return models
 
+@app.get("/check_cuda")
+async def check_cuda():
+    try:
+        cuda_installed = is_cuda_installed()
+        return {"cuda_installed": cuda_installed}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to check CUDA installation: {str(e)}")
+
+def is_cuda_installed():
+    try:
+        result = subprocess.run(['nvcc', '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if result.returncode == 0:
+            return True
+        else:
+            return False
+    except FileNotFoundError:
+        # nvcc command is not found
+        return False
+
 @app.post("/set_model/{model_name}")
-async def set_model(model_name: str):
+async def set_model(model_name: str, use_cuda: bool = False, n_gpu_layers: int = Query(None), context_length: int = Query(None)):
     global llama_model
-    llama_model = init_model(model_name=model_name)
+    llama_model = init_model(model_name=model_name, use_cuda=use_cuda, n_gpu_layers=n_gpu_layers, context_length=context_length)
     return {"message": f"LLAMA model set to {model_name}"}
+
 
 @app.post("/conversations/{conversation_id}/messages/user")
 async def add_user_message(conversation_id: str, message: Message):

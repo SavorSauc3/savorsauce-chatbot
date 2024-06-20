@@ -1,5 +1,5 @@
 /* Chatbot.scss */
-@import "~bootswatch/dist/darkly/bootstrap.min.css";
+@import "~bootswatch/dist/cerulean/bootstrap.min.css";
 *::-webkit-scrollbar {
   width: 10px; /* Width of the scrollbar */
 }
@@ -108,9 +108,48 @@
     transform: translateY(0);
   }
 }
+/* Specific styling for the context length slider */
+.form-label {
+  color: var(--bs-body-color); /* Label color */
+  padding: 10px; /* Added padding */
+}
+
+.form-control-range {
+  accent-color: var(--bs-primary); /* Slider thumb color */
+  background: var(--bs-primary); /* Solid color for the slider track */
+  border-radius: 10px; /* Roundness of the slider track */
+  height: 8px; /* Adjust height as needed */
+  padding: 10px; /* Added padding */
+}
+
+.form-control-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--bs-primary); /* Thumb color */
+  border-radius: 50%; /* Circular thumb */
+  cursor: pointer;
+}
+
+.form-control-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: var(--bs-primary); /* Thumb color */
+  border-radius: 50%; /* Circular thumb */
+  cursor: pointer;
+}
+
+.form-control-range::-ms-thumb {
+  width: 20px;
+  height: 20px;
+  background: var(--bs-primary); /* Thumb color */
+  border-radius: 50%; /* Circular thumb */
+  cursor: pointer;
+}
+
 .copy-button, .edit-button, .regenerate-button {
   position: absolute;
-  bottom: 5px;
+  bottom: 10px;
   left: 5px;
   background: none;
   border: none;
