@@ -1,5 +1,5 @@
 /* Chatbot.scss */
-@import "~bootswatch/dist/darkly/bootstrap.min.css";
+@import "~bootswatch/dist/quartz/bootstrap.min.css";
 *::-webkit-scrollbar {
   width: 10px; /* Width of the scrollbar */
 }
@@ -120,8 +120,10 @@
 
 .form-control-range {
   accent-color: var(--bs-primary); /* Slider thumb color */
-  background: var(--bs-primary); /* Solid color for the slider track */
+  background: var(--bs-secondary); /* Solid color for the slider track */
   border-radius: 10px; /* Roundness of the slider track */
+  border-color: var(--bs-primary);
+  border-width: 2px;
   height: 8px; /* Adjust height as needed */
   padding: 10px; /* Added padding */
 }
@@ -228,6 +230,10 @@
   padding: 20px;
   background-color: var(--bs-gray-700);
   height: 100%;
+}
+
+.empty-conversation h3 {
+  color: var(--bs-white);
 }
 
 .message-form {

@@ -125,7 +125,7 @@ def init_model(model_name=default_model, use_cuda=False, n_gpu_layers=None, cont
     # Initialize the model
     model_kwargs = {
         "model_path": f"./models/{model_name}",
-        "verbose": False
+        "verbose": True
     }
 
     if use_cuda:
