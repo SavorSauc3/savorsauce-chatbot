@@ -9,7 +9,8 @@ const ModelSelect = ({ showModal, setShowModal }) => {
   const [useCuda, setUseCuda] = useState(false);
   const [maxGpuLayers, setMaxGpuLayers] = useState(0); // Max value for the GPU layers slider
   const [gpuLayers, setGpuLayers] = useState(0); // State to hold the GPU layers value
-  const [contextLength, setContextLength] = useState(1024); // Default context length
+  const [contextLength, setContextLength] = useState(512); // Default context length
+  const [maxContextLength, setMaxContextLength] = useState(512) // Holds Maximum context length
   const [loading, setLoading] = useState(false); // State to handle loading animation
 
   useEffect(() => {
@@ -42,7 +43,8 @@ const ModelSelect = ({ showModal, setShowModal }) => {
       // Unpack and handle the model_metadata
       const modelMetadata = data.model_metadata;
       setMaxGpuLayers(modelMetadata['llama.block_count']); // Assuming the metadata contains num_blocks
-      setContextLength(modelMetadata['llama.context_length']);
+      setMaxContextLength(modelMetadata['llama.context_length']);
+      setContextLength(Math.floor(modelMetadata['llama.context_length'] / 2));
       setGpuLayers(Math.floor(modelMetadata['llama.block_count'] / 2)); // Reset GPU layers to half on model change
     } catch (error) {
       console.error('Failed to fetch current model:', error);
@@ -87,8 +89,9 @@ const ModelSelect = ({ showModal, setShowModal }) => {
       }
       const data = await response.json();
       setMaxGpuLayers(data['llama.block_count']); // Assuming the metadata contains num_blocks
-      setContextLength(data['llama.context_length']);
-      setGpuLayers(Math.floor(maxGpuLayers / 2)); // Reset GPU layers to half on model change
+      setMaxContextLength(data['llama.context_length']);
+      setContextLength(Math.floor(data['llama.context_length'] / 2));
+      setGpuLayers(Math.floor(data['llama.block_count'] / 2)); // Reset GPU layers to half on model change
     } catch (error) {
       console.error(`Failed to fetch metadata for ${model}:`, error);
     }
@@ -189,7 +192,7 @@ const ModelSelect = ({ showModal, setShowModal }) => {
           className="form-control-range"
           type="range"
           min="512"
-          max="4096" // Assuming 4096 is the maximum context length
+          max={maxContextLength} // Assuming 4096 is the maximum context length
           value={contextLength}
           onChange={handleContextLengthChange}
         />

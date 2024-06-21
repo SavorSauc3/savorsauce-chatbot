@@ -2,7 +2,7 @@
 // Import Bootstrap variables and functions
 
 // Import the specific Bootswatch theme
-@import "~bootswatch/dist/cerulean/bootstrap.min.css";
+@import "~bootswatch/dist/darkly/bootstrap.min.css";
 
 // Global scrollbar styling
 *::-webkit-scrollbar {
@@ -30,10 +30,11 @@
   width: 100%; /* Ensure full width */
   overflow-y: auto; /* Ensure scrollbar appears only when needed */
   padding: 5px; /* Adjust padding as needed */
+  height: 95vh;
 }
 
 .message-bubble {
-  max-width: 100%;
+  max-width: 100%; /* Adjust max-width to ensure bubbles don't take up too much space */
   padding: 10px;
   border-radius: 15px;
   margin-bottom: 5px;
@@ -41,18 +42,21 @@
   white-space: pre-wrap; /* Preserve newlines */
   background-color: var(--bs-white); /* Background color from Bootswatch */
   border: 1px solid var(--bs-secondary); /* Border color from Bootswatch */
+  box-sizing: border-box; /* Include padding and border in the element's total width and height */
 }
 
 .user .message-bubble {
   align-self: flex-end;
   background-color: var(--bs-success); /* User bubble color */
   color: var(--bs-white); /* Text color for user bubble */
+  margin-right: 5px; /* Add margin to the right to prevent cutting off */
 }
 
 .bot .message-bubble {
   align-self: flex-start;
   background-color: var(--bs-gray-700); /* Bot bubble color */
   color: var(--bs-white); /* Text color for bot bubble */
+  margin-left: 5px; /* Add margin to the left to prevent cutting off */
 }
 
 .message-bubble {
@@ -159,7 +163,7 @@
   left: 5px;
   background: none;
   border: none;
-  color: var(--bs-info); /* Default button text color from Bootswatch */
+  color: var(--bs-white); /* Default button text color from Bootswatch */
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.3s ease;
@@ -182,19 +186,6 @@
   opacity: 0.5;
 }
 
-/* Different colors for buttons based on the message type */
-.user .message-bubble .copy-button, 
-.user .message-bubble .edit-button, 
-.user .message-bubble .regenerate-button {
-  color: var(--bs-white); /* Color for user message buttons */
-}
-
-.bot .message-bubble .copy-button, 
-.bot .message-bubble .edit-button, 
-.bot .message-bubble .regenerate-button {
-  color: var(--bs-white); /* Color for bot message buttons */
-}
-
 .icon-enter {
   opacity: 0;
   transform: scale(0.9);
@@ -215,4 +206,50 @@
   opacity: 0;
   transform: scale(0.9);
   transition: opacity 300ms, transform 300ms;
+}
+
+/* Additional styles for the layout */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 95vh;
+  width: 100%;
+  padding: 0;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 20px;
+  padding: 5px;
+}
+
+.empty-conversation {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid var(--bs-info);
+  border-radius: 5px;
+  padding: 20px;
+  background-color: var(--bs-gray-700);
+  height: 100%;
+}
+
+.message-form {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+}
+
+.message-input {
+  flex: 1;
+  margin-right: 10px;
+  margin-bottom: 0;
+  padding: 10px;
+}
+
+.send-button {
+  height: 80%;
+  padding: 10px;
 }

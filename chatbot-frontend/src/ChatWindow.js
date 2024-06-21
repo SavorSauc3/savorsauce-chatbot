@@ -18,6 +18,23 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  const handleSocketMessage = useCallback((event) => {
+    console.log('WebSocket message received:', event.data);
+    if (event.data === 'GENERATION_COMPLETE' || event.data === 'GENERATION_STOPPED') {
+      setIsGeneratingResponse(false);
+      setStreamType(null); // Reset stream type
+    } else {
+      setMessages((prevMessages) => {
+        const lastMessage = prevMessages[prevMessages.length - 1];
+        if (lastMessage && lastMessage.user === 'bot') {
+          return [...prevMessages.slice(0, -1), { user: 'bot', text: lastMessage.text + event.data }];
+        } else {
+          return [...prevMessages, { user: 'bot', text: event.data }];
+        }
+      });
+    }
+  }, [setMessages]);
+
   const openNewSocket = useCallback(() => {
     if (currentConversation) {
       const newSocket = new WebSocket(`ws://localhost:8000/ws/conversations/${currentConversation}/messages/ai`);
@@ -27,22 +44,7 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
         setSocket(newSocket);
       };
 
-      newSocket.onmessage = (event) => {
-        console.log('WebSocket message received:', event.data);
-        if (event.data === 'GENERATION_COMPLETE' || event.data === 'GENERATION_STOPPED') {
-          setIsGeneratingResponse(false);
-          setStreamType(null); // Reset stream type
-        } else {
-          setMessages((prevMessages) => {
-            const lastMessage = prevMessages[prevMessages.length - 1];
-            if (lastMessage && lastMessage.user === 'bot') {
-              return [...prevMessages.slice(0, -1), { user: 'bot', text: lastMessage.text + event.data }];
-            } else {
-              return [...prevMessages, { user: 'bot', text: event.data }];
-            }
-          });
-        }
-      };
+      newSocket.onmessage = handleSocketMessage;
 
       newSocket.onclose = () => {
         console.log('WebSocket connection closed');
@@ -58,7 +60,7 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
 
       return newSocket;
     }
-  }, [currentConversation, setMessages]);
+  }, [currentConversation, handleSocketMessage]);
 
   useEffect(() => {
     if (currentConversation) {
@@ -101,6 +103,7 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
 
       setIsGeneratingResponse(true);
       setStreamType('new'); // Set stream type to new
+      console.log("Setting stream type to new");
 
       if (socket && socket.readyState === WebSocket.OPEN) {
         console.log('Sending message to WebSocket:', input);
@@ -124,7 +127,8 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
       setIsGeneratingResponse(false);
       setStreamType(null); // Reset stream type
       setTimeout(() => {
-        openNewSocket();
+        const newSocket = openNewSocket();
+        setSocket(newSocket);
       }, 100); // Adding a slight delay before reopening the socket
     } else {
       console.error('WebSocket is not open');
@@ -149,6 +153,7 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
   const handleRegenerate = (index) => {
     setIsGeneratingResponse(true);
     setStreamType('regenerate'); // Set stream type to regenerate
+    console.log("Setting type to regenerate");
     setMessages((prevMessages) => {
       const messageToUpdate = prevMessages[index];
       const newSocket = socket;
@@ -164,31 +169,11 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
       updatedMessages[index] = { ...messageToUpdate, text: '' };
       return updatedMessages;
     });
-
-    // Handle incoming WebSocket messages for the regeneration process
-    if (socket) {
-      socket.onmessage = (event) => {
-        console.log('WebSocket message received:', event.data);
-        if (event.data === 'GENERATION_COMPLETE' || event.data === 'GENERATION_STOPPED') {
-          setIsGeneratingResponse(false);
-          setStreamType(null); // Reset stream type
-        } else {
-          setMessages((prevMessages) => {
-            const updatedMessages = [...prevMessages];
-            const regeneratingMessage = updatedMessages[index];
-            if (regeneratingMessage) {
-              updatedMessages[index] = { ...regeneratingMessage, text: regeneratingMessage.text + event.data };
-            }
-            return updatedMessages;
-          });
-        }
-      };
-    }
   };
 
   return (
-    <Col style={{ display: 'flex', flexDirection: 'column', height: '95vh', width: '100%', padding: '0' }}>
-      <div style={{ flex: '1', overflowY: 'auto', marginBottom: '20px', padding: '5px' }}>
+    <Col className="chat-container">
+      <div className="chat-messages">
         {currentConversation ? (
           <ListGroup>
             {messages.map((msg, idx) => (
@@ -209,15 +194,15 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
             ))}
           </ListGroup>
         ) : (
-          <div className="d-flex flex-column justify-content-center align-items-center border border-info rounded p-5 bg-gray-700" style={{ height: '100%' }}>
+          <div className="empty-conversation">
             <h3 className="mb-2">Select another conversation,</h3>
             <h3>or create a new one</h3>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
-      <Form style={{ display: 'flex', alignItems: 'center', padding: '10px' }} onSubmit={(e) => e.preventDefault()}>
-        <Form.Group controlId="formMessage" style={{ flex: '1', marginRight: '10px', marginBottom: '0' }}>
+      <Form className="message-form" onSubmit={(e) => e.preventDefault()}>
+        <Form.Group controlId="formMessage" className="message-input">
           <Form.Control
             as="textarea"
             rows={3}
@@ -225,7 +210,6 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            style={{ padding: '10px' }}
             disabled={!currentConversation || isGeneratingResponse}
           />
         </Form.Group>
@@ -233,7 +217,7 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
           variant="primary"
           type="submit"
           onClick={streamType === 'regenerate' ? sendMessageRegenerate : sendMessageNew}
-          style={{ height: '100%', padding: '10px' }}
+          className="send-button"
           disabled={!currentConversation}
         >
           <SwitchTransition>
