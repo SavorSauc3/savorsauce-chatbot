@@ -254,4 +254,45 @@
   padding: 10px;
 }
 
+.total-length {
+  display: flex;
+  font-size: 15px;
+  color: var(--bs-white); /* Example color */
+  background-color: var(--bs-primary);
+  align-content: center;
+  padding: 14px;
+  border-radius: 10px;
+}
+
+.conversation-list {
+  max-width: 20vw;
+}
+.conversation-list .conversation-item {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-height: 100%;
+}
+.conversation-list .conversation-item .conversation-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+.conversation-list .conversation-item .conversation-content .conversation-name {
+  flex: 1;
+  max-width: 70%;
+}
+.conversation-list .conversation-item .conversation-content .conversation-actions {
+  display: flex;
+  gap: 5px;
+}
+.conversation-list .conversation-item .conversation-content .conversation-actions button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.2rem 0.4rem;
+}
+
 /*# sourceMappingURL=Chatbot.css.map */

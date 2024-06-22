@@ -30,6 +30,7 @@ index_file = os.path.join(conversations_dir, "index.json")
 current_model = None  # Changes to default on startup
 default_model = "Meta-Llama-3-8B-Instruct-abliterated-v3_q6.gguf"
 
+llama_model = None
 # Prompts
 system_prompt = "You are a sentient, superintelligent artificial general intelligence, here to teach and assist me."
 
@@ -151,8 +152,6 @@ def init_model(model_name=default_model, use_cuda=False, n_gpu_layers=None, cont
 
     return model
 
-
-
 def convert_strings_to_ints(d):
     """
     Recursively convert string representations of numbers to integers in a dictionary.
@@ -223,9 +222,20 @@ async def list_conversations():
 async def get_conversation(conversation_id: str):
     filename = get_conversation_filename(conversation_id)
     file_path = os.path.join(conversations_dir, filename)
+    
     with open(file_path, 'r') as f:
         conversation = json.load(f)
-    return conversation
+    
+    # Calculate the total length of all messages
+    total_length = sum(message['length'] for message in conversation['messages'])
+    
+    # Add total_length to the response
+    response = {
+        "conversation": conversation,
+        "total_length": total_length
+    }
+    
+    return response
 
 @app.get("/models")
 async def list_models():
@@ -268,7 +278,9 @@ async def add_user_message(conversation_id: str, message: Message):
     with open(file_path, 'r') as f:
         conversation = json.load(f)
 
-    conversation["messages"].append({"user": message.user, "text": message.text})
+    message_length = count_prompt_tokens(llama_model, message.text)
+
+    conversation["messages"].append({"user": message.user, "text": message.text, "length": message_length})
 
     with open(file_path, 'w') as f:
         json.dump(conversation, f)
@@ -278,6 +290,11 @@ async def async_generator(generator):
     for item in generator:
         await asyncio.sleep(0)  # Yield control to the event loop
         yield item
+
+def count_prompt_tokens(model: Llama, text: str):
+    tokenized_text = model.tokenize(text.encode('utf-8'))
+    prompt_length = len(tokenized_text)
+    return prompt_length
 
 @app.websocket("/ws/conversations/{conversation_id}/messages/ai")
 async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
@@ -326,8 +343,10 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
                     bot_response_text += delta['content']
                     await websocket.send_text(delta['content'])
 
+            
+            message_length = count_prompt_tokens(llama_model, bot_response_text)
             # Overwrite the previous message at the specified index
-            conversation["messages"][message_index] = {"user": "bot", "text": bot_response_text}
+            conversation["messages"][message_index] = {"user": "bot", "text": bot_response_text, "length": message_length}
             with open(file_path, 'w') as f:
                 json.dump(conversation, f)
 
@@ -372,8 +391,9 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
                         bot_response_text += delta['content']
                         await websocket.send_text(delta['content'])
 
+                message_length = count_prompt_tokens(llama_model, bot_response_text)
                 # Save the LLM message to the conversation even if stopped
-                conversation["messages"].append({"user": "bot", "text": bot_response_text})
+                conversation["messages"].append({"user": "bot", "text": bot_response_text, "length": message_length})
                 with open(file_path, 'w') as f:
                     json.dump(conversation, f)
 
@@ -417,9 +437,11 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
             with open(file_path, 'r') as f:
                 conversation = json.load(f)
             if generation_type == 'response':
-                conversation["messages"].append({"user": "bot", "text": bot_response_text})
+                message_length = count_prompt_tokens(llama_model, bot_response_text)
+                conversation["messages"].append({"user": "bot", "text": bot_response_text, "length": message_length})
             elif generation_type == 'regenerate':
-                conversation["messages"][global_message_index] = {"user": "bot", "text": bot_response_text}
+                message_length = count_prompt_tokens(llama_model, bot_response_text)
+                conversation["messages"][global_message_index] = {"user": "bot", "text": bot_response_text, "length": message_length}
             with open(file_path, 'w') as f:
                 json.dump(conversation, f)
         print(f"Saved in-progress bot response to conversation {conversation_id}")
@@ -465,8 +487,8 @@ async def edit_message(conversation_id: str, message_index: int, message: Messag
     
     if message_index < 0 or message_index >= len(conversation["messages"]):
         raise HTTPException(status_code=400, detail="Invalid message index")
-    
-    conversation["messages"][message_index] = {"user": message.user, "text": message.text}
+    message_length = count_prompt_tokens(llama_model, message.text)
+    conversation["messages"][message_index] = {"user": message.user, "text": message.text, "length": message_length}
     
     with open(file_path, 'w') as f:
         json.dump(conversation, f)
