@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ListGroup, Button, Modal, Form } from 'react-bootstrap';
 import './css/Chatbot.css'; // Make sure to import your SCSS file
 
-const ConversationList = ({ setMessages, setCurrentConversationId, currentConversation }) => {
+const ConversationList = ({ setMessages, setCurrentConversationId, currentConversation, totalLength, setTotalLength }) => {
   const [conversations, setConversations] = useState([]);
-  const [totalLength, setTotalLength] = useState(0);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameConversationId, setRenameConversationId] = useState(null);
   const [newConversationName, setNewConversationName] = useState('');
@@ -100,8 +99,13 @@ const ConversationList = ({ setMessages, setCurrentConversationId, currentConver
   return (
     <div>
       <div className="d-flex align-items-center mb-3">
-        <Button onClick={handleNewConversation} className="me-2">New Conversation</Button>
-        <span className="total-length">{totalLength}</span>
+        <Button onClick={handleNewConversation} className="me-2 d-flex align-items-center">
+          New
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" className="bi bi-plus ms-1" viewBox="0 0 16 14">
+            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/>
+          </svg>
+        </Button>
+        <span className="total-length">Tokens: {totalLength}</span>
       </div>
       <ListGroup className="conversation-list">
         {conversations.map(conversation => (

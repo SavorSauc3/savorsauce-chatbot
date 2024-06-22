@@ -4,7 +4,7 @@ import MessageBubble from './MessageBubble'; // Import the MessageBubble compone
 import { CSSTransition, SwitchTransition } from 'react-transition-group';
 import './css/Chatbot.css'; // Import CSS file for animations
 
-const ChatWindow = ({ messages, setMessages, input, setInput, currentConversation }) => {
+const ChatWindow = ({ messages, setMessages, input, setInput, currentConversation, setTotalLength }) => {
   const messagesEndRef = useRef(null);
   const [socket, setSocket] = useState(null);
   const [isGeneratingResponse, setIsGeneratingResponse] = useState(false);
@@ -18,11 +18,26 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  const fetchTotalLength = useCallback(async (conversationId) => {
+    try {
+      const response = await fetch(`http://localhost:8000/conversations/${conversationId}/tokens`);
+      if (response.ok) {
+        const data = await response.json();
+        setTotalLength(data); // Assuming data is the total length returned from API
+      } else {
+        console.error('Failed to fetch total tokens');
+      }
+    } catch (error) {
+      console.error('Error fetching total tokens:', error);
+    }
+  }, [setTotalLength]); // Dependency array specifies setTotalTokens as the dependency
+
   const handleSocketMessage = useCallback((event) => {
     console.log('WebSocket message received:', event.data);
     if (event.data === 'GENERATION_COMPLETE' || event.data === 'GENERATION_STOPPED') {
       setIsGeneratingResponse(false);
       setStreamType(null); // Reset stream type
+      fetchTotalLength(currentConversation); // Fetch total tokens on completion/stopped
     } else {
       setMessages((prevMessages) => {
         const lastMessage = prevMessages[prevMessages.length - 1];
@@ -33,7 +48,7 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
         }
       });
     }
-  }, [setMessages]);
+  }, [currentConversation, fetchTotalLength, setMessages]);
 
   const openNewSocket = useCallback(() => {
     if (currentConversation) {
@@ -96,6 +111,8 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
       if (!userMessageResponse.ok) {
         console.error('Failed to send user message:', userMessageResponse.statusText);
         return;
+      } else {
+        fetchTotalLength(currentConversation);
       }
       const userMessageData = await userMessageResponse.json();
       setMessages(userMessageData.messages);

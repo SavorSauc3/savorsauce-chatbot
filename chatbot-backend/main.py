@@ -296,6 +296,20 @@ def count_prompt_tokens(model: Llama, text: str):
     prompt_length = len(tokenized_text)
     return prompt_length
 
+@app.get("/conversations/{conversation_id}/tokens")
+async def get_total_tokens(conversation_id: str):
+    filename = get_conversation_filename(conversation_id)
+    file_path = os.path.join(conversations_dir, filename)
+    
+    with open(file_path, 'r') as f:
+        conversation = json.load(f)
+    
+    # Calculate the total length of all messages
+    total_length = sum(message['length'] for message in conversation['messages'])
+
+    return total_length
+
+
 @app.websocket("/ws/conversations/{conversation_id}/messages/ai")
 async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
     await websocket.accept()

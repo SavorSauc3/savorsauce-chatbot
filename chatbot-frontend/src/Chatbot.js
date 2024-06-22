@@ -8,6 +8,7 @@ const Chatbot = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [currentConversation, setCurrentConversationId] = useState(null); // Rename state variable
+  const [totalLength, setTotalLength] = useState(0);
 
   return (
     <Container style={{ marginTop: '20px', height: 'calc(100vh - 20px)', width: '100%' }}>
@@ -17,6 +18,8 @@ const Chatbot = () => {
             setMessages={setMessages}
             setCurrentConversationId={setCurrentConversationId}
             currentConversation={currentConversation}
+            totalLength={totalLength}
+            setTotalLength={setTotalLength}
           />
         </Col>
         <Col style={{ flex: 3 }}> {/* Adjust the flex value as needed */}
@@ -27,6 +30,7 @@ const Chatbot = () => {
             setInput={setInput}
             currentConversation={currentConversation}
             setCurrentConversationId={setCurrentConversationId}
+            setTotalLength={setTotalLength}
           />
         </Col>
       </Row>
