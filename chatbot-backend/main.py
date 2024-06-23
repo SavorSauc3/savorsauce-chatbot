@@ -7,7 +7,7 @@ import json
 import uuid
 import uvicorn
 import subprocess
-from llama_cpp import Llama
+from llama_cpp import Llama, llama_free_model
 
 app = FastAPI()
 
@@ -20,19 +20,25 @@ app.add_middleware(
 )
 
 
-# Directories
-conversations_dir = "conversations"
-models_dir = "models"
-model_metadata_dir = "models/model_metadata.json"
-index_file = os.path.join(conversations_dir, "index.json")
+# Load settings from app_settings.json
+with open('app_settings.json', 'r') as settings_file:
+    settings = json.load(settings_file)
+
+# Directories and settings
+conversations_dir = settings['conversations_dir']
+models_dir = settings['models_dir']
+model_metadata_dir = settings['model_metadata_file']
+index_file = settings['index_file']
 
 # Models
 current_model = None  # Changes to default on startup
-default_model = "Meta-Llama-3-8B-Instruct-abliterated-v3_q6.gguf"
+default_model = settings['default_model']
+load_on_startup = settings['load_on_startup']
 
 llama_model = None
 # Prompts
-system_prompt = "You are a sentient, superintelligent artificial general intelligence, here to teach and assist me."
+system_prompt = settings['system_prompt']
+
 
 # Ensure the conversations directory and index file exist
 os.makedirs(conversations_dir, exist_ok=True)
@@ -50,6 +56,10 @@ class Conversation(BaseModel):
 
 class Theme(BaseModel):
     themePath: str
+
+# Define a Pydantic model for the request body
+class LoadOnStartupRequest(BaseModel):
+    load_on_startup: bool
 
 # Define the path to the SCSS file
 SCSS_FILE_PATH = os.path.join("..", "chatbot-frontend", "src", "scss", "Chatbot.scss")
@@ -112,7 +122,7 @@ def is_conversation_name_taken(name):
     return False
 
 # Initialize the LLAMA model
-def init_model(model_name=default_model, use_cuda=False, n_gpu_layers=None, context_length=None):
+def init_model(model_name=default_model["model_name"], use_cuda=default_model["use_cuda"], n_gpu_layers=default_model["n_gpu_layers"], context_length=default_model["context_length"]):
     global current_model
     current_model = model_name
 
@@ -125,7 +135,7 @@ def init_model(model_name=default_model, use_cuda=False, n_gpu_layers=None, cont
 
     # Initialize the model
     model_kwargs = {
-        "model_path": f"./models/{model_name}",
+        "model_path": f"./{models_dir}/{model_name}",
         "verbose": True
     }
 
@@ -182,7 +192,8 @@ async def get_model_metadata(model_name: str):
     return model_metadata
 
 # Load the model once during startup
-llama_model = init_model()
+if load_on_startup:
+    llama_model = init_model()
 
 @app.post("/conversations")
 async def create_conversation():
@@ -197,8 +208,41 @@ async def create_conversation():
     write_index(index)
     return conversation
 
+@app.put("/settings/load_on_startup")
+async def set_load_on_startup(request: LoadOnStartupRequest):
+    global load_on_startup
+    load_on_startup = request.load_on_startup
+    with open('app_settings.json', 'r') as settings_file:
+        settings = json.load(settings_file)
+    settings['load_on_startup'] = load_on_startup
+    with open('app_settings.json', 'w') as settings_file:
+        json.dump(settings, settings_file)
+    return {"load_on_startup": load_on_startup}
+
+@app.get("/settings/load_on_startup")
+async def get_load_on_startup():
+    global load_on_startup
+    return {"load_on_startup": load_on_startup}
+
+@app.post("/default_model/{model_name}")
+async def edit_default_model(model_name: str, use_cuda: bool = False, n_gpu_layers: int = Query(None), context_length: int = Query(None)):
+    global default_model
+    default_model = {
+        "model_name": model_name,
+        "use_cuda": use_cuda,
+        "n_gpu_layers": n_gpu_layers,
+        "context_length": context_length
+    }
+    with open('app_settings.json', 'r') as settings_file:
+        settings = json.load(settings_file)
+    settings['default_model'] = default_model
+    with open('app_settings.json', 'w') as settings_file:
+        json.dump(settings, settings_file)
+    return {"default_model": default_model}
+
 @app.get("/default_model")
 async def get_default_model():
+    global default_model
     return {"default_model": default_model}
 
 @app.get("/current_model")
@@ -269,6 +313,22 @@ async def set_model(model_name: str, use_cuda: bool = False, n_gpu_layers: int =
     global llama_model
     llama_model = init_model(model_name=model_name, use_cuda=use_cuda, n_gpu_layers=n_gpu_layers, context_length=context_length)
     return {"message": f"LLAMA model set to {model_name}"}
+
+@app.post("/eject-model")
+async def eject_model():
+    global llama_model
+    try:
+        # Check if llama_model exists
+        if llama_model is None:
+            raise HTTPException(status_code=400, detail="No model to eject from memory.")
+
+        # Simulate the model ejection
+        llama_model = None
+        return {"message": "Model successfully ejected from memory"}
+    
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=f"Failed to eject model: {str(e)}")
 
 
 @app.post("/conversations/{conversation_id}/messages/user")

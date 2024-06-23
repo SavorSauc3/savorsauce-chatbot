@@ -1,56 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Form, Dropdown, DropdownButton, Spinner } from 'react-bootstrap';
 
-const ModelSelect = ({
+const DefaultModelSelect = ({
+  availableModels = [],
+  cudaAvailable,
   showModal,
   setShowModal,
-  cudaAvailable,
-  setCudaAvailable,
-  availableModels,
-  setAvailableModels,
 }) => {
   const [tempSelectedModel, setTempSelectedModel] = useState('');
-  const [selectedModel, setSelectedModel] = useState('Loading models...');
+  const [selectedModel, setSelectedModel] = useState('');
   const [useCuda, setUseCuda] = useState(false);
-  const [maxGpuLayers, setMaxGpuLayers] = useState(0); // Max value for the GPU layers slider
-  const [gpuLayers, setGpuLayers] = useState(0); // State to hold the GPU layers value
-  const [contextLength, setContextLength] = useState(512); // Default context length
-  const [maxContextLength, setMaxContextLength] = useState(512); // Holds Maximum context length
-  const [loading, setLoading] = useState(false); // State to handle loading animation
+  const [maxGpuLayers, setMaxGpuLayers] = useState(0);
+  const [gpuLayers, setGpuLayers] = useState(0);
+  const [contextLength, setContextLength] = useState(512);
+  const [maxContextLength, setMaxContextLength] = useState(512);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (showModal) {
-      const fetchData = async () => {
-        try {
-          // Fetch current model and its metadata
-          const [currentModelResponse, availableModelsResponse, cudaAvailabilityResponse] =
-            await Promise.all([
-              fetch('http://localhost:8000/current_model'),
-              fetch('http://localhost:8000/models'),
-              fetch('http://localhost:8000/check_cuda'),
-            ]);
-
-          if (!currentModelResponse.ok) {
-            throw new Error('Failed to fetch current model');
-          }
-          const currentModelData = await currentModelResponse.json();
-          const modelMetadata = currentModelData.model_metadata;
-
-          setSelectedModel(currentModelData.current_model);
-          setTempSelectedModel(currentModelData.current_model);
-          setAvailableModels(await availableModelsResponse.json());
-          setCudaAvailable((await cudaAvailabilityResponse.json()).cuda_installed);
-
-          // Set initial max values and adjust sliders
-          setMaxGpuLayers(modelMetadata['llama.block_count']);
-          setMaxContextLength(modelMetadata['llama.context_length']);
-          setGpuLayers(Math.floor(modelMetadata['llama.block_count'] / 2));
-          setContextLength(Math.floor(modelMetadata['llama.context_length'] / 2));
-        } catch (error) {
-          console.error('Failed to fetch initial data:', error);
+    const fetchData = async () => {
+      try {
+        // Fetch default model and its metadata
+        const defaultModelResponse = await fetch('http://localhost:8000/default_model');
+        if (!defaultModelResponse.ok) {
+          throw new Error('Failed to fetch default model settings');
         }
-      };
+        const defaultModelData = await defaultModelResponse.json();
+        const defaultModel = defaultModelData.default_model;
 
+        setSelectedModel(defaultModel.model_name);
+        setTempSelectedModel(defaultModel.model_name);
+        setUseCuda(defaultModel.use_cuda);
+        setGpuLayers(parseInt(defaultModel.n_gpu_layers));
+        setContextLength(parseInt(defaultModel.context_length));
+
+        // Fetch metadata for selected model to get maxGpuLayers and maxContextLength
+        const modelMetadataResponse = await fetch(`http://localhost:8000/${defaultModel.model_name}/metadata`);
+        if (!modelMetadataResponse.ok) {
+          throw new Error(`Failed to fetch metadata for ${defaultModel.model_name}`);
+        }
+        const metadata = await modelMetadataResponse.json();
+        setMaxGpuLayers(parseInt(metadata['llama.block_count']));
+        setMaxContextLength(parseInt(metadata['llama.context_length']));
+      } catch (error) {
+        console.error('Failed to fetch initial model data:', error);
+      }
+    };
+
+    if (showModal) {
       fetchData();
     }
   }, [showModal]);
@@ -63,10 +59,10 @@ const ModelSelect = ({
         throw new Error(`Failed to fetch metadata for ${model}`);
       }
       const data = await response.json();
-      setMaxGpuLayers(data['llama.block_count']);
-      setMaxContextLength(data['llama.context_length']);
-      setGpuLayers(Math.floor(data['llama.block_count'] / 2));
-      setContextLength(Math.floor(data['llama.context_length'] / 2));
+      setMaxGpuLayers(parseInt(data['llama.block_count']));
+      setMaxContextLength(parseInt(data['llama.context_length']));
+      setContextLength(Math.floor(parseInt(data['llama.context_length']) / 2));
+      setGpuLayers(Math.floor(parseInt(data['llama.block_count']) / 2));
     } catch (error) {
       console.error(`Failed to fetch metadata for ${model}:`, error);
     }
@@ -87,7 +83,7 @@ const ModelSelect = ({
   const saveSettings = async () => {
     setLoading(true);
     try {
-      let url = `http://localhost:8000/set_model/${tempSelectedModel}?use_cuda=${useCuda}`;
+      let url = `http://localhost:8000/default_model/${tempSelectedModel}?use_cuda=${useCuda}`;
       if (useCuda && gpuLayers > 0) {
         url += `&n_gpu_layers=${gpuLayers}`;
       }
@@ -114,27 +110,6 @@ const ModelSelect = ({
   const handleCancel = () => {
     setTempSelectedModel(selectedModel);
     setShowModal(false); // Close the modal
-  };
-
-  const handleEjectModel = async () => {
-    try {
-      const response = await fetch('http://localhost:8000/eject-model', {
-        method: 'POST',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to eject model');
-      }
-      // Reset all model-related variables to their original values
-      setSelectedModel('Loading models...');
-      setTempSelectedModel('');
-      setUseCuda(false);
-      setMaxGpuLayers(0);
-      setGpuLayers(0);
-      setContextLength(512);
-      setMaxContextLength(512);
-    } catch (error) {
-      console.error('Failed to eject model:', error);
-    }
   };
 
   return (
@@ -172,7 +147,7 @@ const ModelSelect = ({
           <Form.Control
             className="form-control-range"
             type="range"
-            min="0"
+            min={0}
             max={maxGpuLayers}
             value={gpuLayers}
             onChange={handleGpuLayersChange}
@@ -185,7 +160,7 @@ const ModelSelect = ({
         <Form.Control
           className="form-control-range"
           type="range"
-          min="512"
+          min={512}
           max={maxContextLength}
           value={contextLength}
           onChange={handleContextLengthChange}
@@ -195,15 +170,11 @@ const ModelSelect = ({
       <Button variant="secondary" onClick={handleCancel} disabled={loading} className="me-2">
         Cancel
       </Button>
-      <Button variant="primary" onClick={saveSettings} disabled={loading}>
-        {loading ? <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> : 'Load'}
-      </Button>
-      
-      <Button variant="danger" onClick={handleEjectModel} disabled={loading} className="ms-2">
-        {loading ? <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> : 'Eject'}
+      <Button variant="primary" onClick={saveSettings} disabled={loading || !tempSelectedModel}>
+        {loading ? <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> : 'Save'}
       </Button>
     </Form>
   );
 };
 
-export default ModelSelect;
+export default DefaultModelSelect;

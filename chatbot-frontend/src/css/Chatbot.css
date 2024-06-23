@@ -92,6 +92,10 @@
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1); /* Optional: Shadow on hover/focus */
 }
 
+.checkbox-with-padding-top {
+  padding-top: 10px; /* Adjust the padding as needed */
+}
+
 .conversation-item::after {
   content: "";
   position: absolute;

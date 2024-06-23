@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Button, Modal, Tabs, Tab } from 'react-bootstrap';
 import ThemeSwitcher from './ThemeSwitcher';
 import ModelSelect from './ModelSelect'; // Import the new component
+import AppSettings from './AppSettings';
 
 const SettingsPanel = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState('');
+  const [availableModels, setAvailableModels] = useState([]);
+  const [cudaAvailable, setCudaAvailable] = useState(false);
 
   useEffect(() => {
     fetchSelectedTheme();
@@ -54,10 +57,17 @@ const SettingsPanel = () => {
               <ModelSelect
                 showModal={showModal}
                 setShowModal={setShowModal}
+                cudaAvailable={cudaAvailable}
+                setCudaAvailable={setCudaAvailable}
+                availableModels={availableModels}
+                setAvailableModels={setAvailableModels}
               />
             </Tab>
             <Tab eventKey="theme" title="Theme">
               <ThemeSwitcher selectedTheme={selectedTheme} setSelectedTheme={setSelectedTheme} />
+            </Tab>
+            <Tab eventKey="default" title="DefaultModel">
+              <AppSettings cudaAvailable={cudaAvailable} availableModels={availableModels} showModal={showModal} setShowModal={setShowModal} />
             </Tab>
           </Tabs>
         </Modal.Body>
