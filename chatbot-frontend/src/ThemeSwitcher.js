@@ -29,7 +29,6 @@ const ThemeSwitcher = ({ selectedTheme, setSelectedTheme }) => {
 
   return (
     <div className="container mt-3">
-      <h1>Theme Switcher</h1>
       <div className="form-group">
         <label htmlFor="themeSelector">Select Theme:</label>
         <select

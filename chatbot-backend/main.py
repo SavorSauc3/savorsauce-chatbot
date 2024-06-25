@@ -7,7 +7,7 @@ import json
 import uuid
 import uvicorn
 import subprocess
-from llama_cpp import Llama, llama_free_model
+from llama_cpp import Llama
 
 app = FastAPI()
 
@@ -31,13 +31,11 @@ model_metadata_dir = settings['model_metadata_file']
 index_file = settings['index_file']
 
 # Models
-current_model = None  # Changes to default on startup
+current_model = None  # Changes to default on startup (if enabled)
 default_model = settings['default_model']
 load_on_startup = settings['load_on_startup']
 
 llama_model = None
-# Prompts
-system_prompt = settings['system_prompt']
 
 
 # Ensure the conversations directory and index file exist
@@ -60,6 +58,17 @@ class Theme(BaseModel):
 # Define a Pydantic model for the request body
 class LoadOnStartupRequest(BaseModel):
     load_on_startup: bool
+
+class ChatParams(BaseModel):
+    system_prompt: str = None
+    temperature: float = 0.2
+    top_p: float = 0.95
+    top_k: int = 40
+
+# CHAT PARAMETERS
+chat_params = ChatParams(system_prompt=settings['system_prompt'])
+
+
 
 # Define the path to the SCSS file
 SCSS_FILE_PATH = os.path.join("..", "chatbot-frontend", "src", "scss", "Chatbot.scss")
@@ -95,6 +104,27 @@ async def get_current_theme():
         raise HTTPException(status_code=404, detail="Theme not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch current theme: {str(e)}")
+    
+@app.get("/chat_params", response_model=ChatParams)
+async def get_chat_params():
+    return chat_params
+
+@app.put("/chat_params", response_model=ChatParams)
+async def edit_chat_params(params: ChatParams):
+    global chat_params
+    chat_params = params
+
+    # Update the settings in app_settings.json
+    with open('app_settings.json', 'r') as settings_file:
+        settings = json.load(settings_file)
+
+    settings['system_prompt'] = chat_params.system_prompt
+
+    with open('app_settings.json', 'w') as settings_file:
+        json.dump(settings, settings_file)
+
+    return chat_params
+
 
 def read_index():
     with open(index_file, 'r') as f:
@@ -316,7 +346,7 @@ async def set_model(model_name: str, use_cuda: bool = False, n_gpu_layers: int =
 
 @app.post("/eject-model")
 async def eject_model():
-    global llama_model
+    global llama_model, current_model
     try:
         # Check if llama_model exists
         if llama_model is None:
@@ -324,6 +354,7 @@ async def eject_model():
 
         # Simulate the model ejection
         llama_model = None
+        current_model = None
         return {"message": "Model successfully ejected from memory"}
     
     except Exception as e:
@@ -372,6 +403,7 @@ async def get_total_tokens(conversation_id: str):
 
 @app.websocket("/ws/conversations/{conversation_id}/messages/ai")
 async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
+    global chat_params
     await websocket.accept()
     user_message_queue = asyncio.Queue()  # Queue to hold user messages
     is_generating = False
@@ -400,13 +432,17 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
         with open(file_path, 'r') as f:
             conversation = json.load(f)
 
-        formatted_messages = [{"role": "system", "content": system_prompt}]
+        formatted_messages = [{"role": "system", "content": chat_params.system_prompt}]
         for idx, msg in enumerate(conversation["messages"][:message_index]):
             role = "user" if msg["user"] != "bot" else "assistant"
             formatted_messages.append({"role": role, "content": msg["text"]})
 
         try:
-            llama_response = llama_model.create_chat_completion(messages=formatted_messages, stream=True)
+            llama_response = llama_model.create_chat_completion(messages=formatted_messages,
+                                                                temperature=chat_params.temperature,
+                                                                top_p=chat_params.top_p,
+                                                                top_k=chat_params.top_k,
+                                                                stream=True)
             bot_response_text = ""
             is_generating = True
             async for chunk in async_generator(llama_response):
@@ -447,14 +483,18 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
             with open(file_path, 'r') as f:
                 conversation = json.load(f)
 
-            formatted_messages = [{"role": "system", "content": system_prompt}]
+            formatted_messages = [{"role": "system", "content": chat_params.system_prompt}]
             for idx, msg in enumerate(conversation["messages"][:-1]):
                 role = "user" if msg["user"] != "bot" else "assistant"
                 formatted_messages.append({"role": role, "content": msg["text"]})
             formatted_messages.append({"role": "user", "content": user_input})
 
             try:
-                llama_response = llama_model.create_chat_completion(messages=formatted_messages, stream=True)
+                llama_response = llama_model.create_chat_completion(messages=formatted_messages,
+                                                                temperature=chat_params.temperature,
+                                                                top_p=chat_params.top_p,
+                                                                top_k=chat_params.top_k,
+                                                                stream=True)
                 bot_response_text = ""
                 is_generating = True
                 async for chunk in async_generator(llama_response):

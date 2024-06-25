@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { ListGroup, Button, Modal, Form } from 'react-bootstrap';
+import { ListGroup, Button, Modal, Form, OverlayTrigger, Tooltip } from 'react-bootstrap';
 import './css/Chatbot.css'; // Make sure to import your SCSS file
 
 const ConversationList = ({ setMessages, setCurrentConversationId, currentConversation, totalLength, setTotalLength }) => {
   const [conversations, setConversations] = useState([]);
+  const [selectedConversations, setSelectedConversations] = useState([]);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameConversationId, setRenameConversationId] = useState(null);
   const [newConversationName, setNewConversationName] = useState('');
   const [renameError, setRenameError] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConversationId, setDeleteConversationId] = useState(null);
+  const [canEdit, setCanEdit] = useState(false);
 
   useEffect(() => {
     fetchConversations();
@@ -34,7 +36,6 @@ const ConversationList = ({ setMessages, setCurrentConversationId, currentConver
       setCurrentConversationId(data.id);
       setMessages([]);
       setTotalLength(0);
-      // Update total length after adding a new conversation
       fetchConversations();
     } else {
       console.error('Failed to create new conversation');
@@ -89,23 +90,83 @@ const ConversationList = ({ setMessages, setCurrentConversationId, currentConver
       }
       setShowDeleteModal(false);
       setDeleteConversationId(null);
-      // Update total length after deleting a conversation
       fetchConversations();
     } else {
       console.error('Failed to delete conversation');
     }
   };
 
+  const handleDeleteSelectedConversations = async () => {
+    await Promise.all(selectedConversations.map(async (conversationId) => {
+      const response = await fetch(`http://localhost:8000/conversations/${conversationId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setConversations(prevConversations => prevConversations.filter(conv => conv.id !== conversationId));
+      } else {
+        console.error(`Failed to delete conversation with id ${conversationId}`);
+      }
+    }));
+
+    setSelectedConversations([]);
+    if (selectedConversations.includes(currentConversation)) {
+      setCurrentConversationId(null);
+      setMessages([]);
+      setTotalLength(0);
+    }
+    fetchConversations();
+  };
+
+  const toggleSelectConversation = (conversationId) => {
+    setSelectedConversations(prevSelected => {
+      if (prevSelected.includes(conversationId)) {
+        return prevSelected.filter(id => id !== conversationId);
+      } else {
+        return [...prevSelected, conversationId];
+      }
+    });
+  };
+
+  const toggleCanEdit = () => {
+    setCanEdit(prevCanEdit => !prevCanEdit);
+    if (canEdit) {
+      setSelectedConversations([]);
+    }
+  };
+
   return (
     <div>
       <div className="d-flex align-items-center mb-3">
-        <Button onClick={handleNewConversation} className="me-2 d-flex align-items-center">
-          New
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" className="bi bi-plus ms-1" viewBox="0 0 16 14">
-            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/>
-          </svg>
-        </Button>
-        <span className="total-length">Tokens: {totalLength}</span>
+        <OverlayTrigger placement="bottom" overlay=<Tooltip id="total-length-tooltip">New Conversation</Tooltip>>
+          <Button onClick={handleNewConversation} id="new-conv-button" className="d-flex align-items-center">
+            New
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" className="bi bi-plus ms-1" viewBox="0 0 16 14">
+              <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/>
+            </svg>
+          </Button>
+        </OverlayTrigger>
+        <OverlayTrigger placement="bottom" overlay=<Tooltip id="total-length-tooltip">Delete Selected</Tooltip>>
+          <Button variant="outline-danger" onClick={handleDeleteSelectedConversations} disabled={selectedConversations.length === 0} className="ms-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" className="bi bi-trash ms-1" viewBox="0 0 16 16">
+              <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+              <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
+            </svg>
+          </Button>
+        </OverlayTrigger>
+        <OverlayTrigger placement="bottom" overlay=<Tooltip id="total-length-tooltip">Toggle Select Conversations</Tooltip>>
+          <Button variant={canEdit ? "outline-danger" : "outline-info"} onClick={toggleCanEdit} className="ms-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" className="bi bi-pen" viewBox="0 0 16 16">
+              <path d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001m-.644.766a.5.5 0 0 0-.707 0L1.95 11.756l-.764 3.057 3.057-.764L14.44 3.854a.5.5 0 0 0 0-.708z"/>
+            </svg>
+          </Button>
+        </OverlayTrigger>
+        <OverlayTrigger
+          placement="bottom"
+          overlay={<Tooltip id="total-length-tooltip">Number of tokens: {totalLength}</Tooltip>}
+        >
+          <span id="token-count" className="total-length">{totalLength}</span>
+        </OverlayTrigger>
       </div>
       <ListGroup className="conversation-list">
         {conversations.map(conversation => (
@@ -113,34 +174,49 @@ const ConversationList = ({ setMessages, setCurrentConversationId, currentConver
             key={conversation.id}
             active={conversation.id === currentConversation}
             onClick={() => handleSelectConversation(conversation.id)}
-            className="conversation-item"
+            className="conversation-item d-flex align-items-center"
           >
-            <div className="conversation-content">
+            {canEdit && (
+              <Form.Check
+                type="checkbox"
+                checked={selectedConversations.includes(conversation.id)}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  toggleSelectConversation(conversation.id);
+                }}
+                className="me-2"
+              />
+            )}
+            <div className="conversation-content flex-grow-1">
               <div className="conversation-name">
                 {conversation.name || 'Unnamed Conversation'}
               </div>
               <div className="conversation-actions">
-                <Button variant="outline-success" size="sm" onClick={(e) => {
-                  e.stopPropagation();
-                  setShowRenameModal(true);
-                  setRenameConversationId(conversation.id);
-                  setNewConversationName(conversation.name);
-                }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-pencil-square" viewBox="0 0 16 16">
-                    <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
-                    <path fillRule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/>
-                  </svg>
-                </Button>
-                <Button variant="outline-danger" size="sm" onClick={(e) => {
-                  e.stopPropagation();
-                  setShowDeleteModal(true);
-                  setDeleteConversationId(conversation.id);
-                }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-trash" viewBox="0 0 16 16">
-                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
-                    <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
-                  </svg>
-                </Button>
+                <OverlayTrigger placement="bottom" overlay=<Tooltip id="total-length-tooltip">Rename</Tooltip>>
+                  <Button variant="outline-success" size="sm" onClick={(e) => {
+                    e.stopPropagation();
+                    setShowRenameModal(true);
+                    setRenameConversationId(conversation.id);
+                    setNewConversationName(conversation.name);
+                  }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-pencil-square" viewBox="0 0 16 16">
+                      <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+                      <path fillRule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/>
+                    </svg>
+                  </Button>
+                </OverlayTrigger>
+                <OverlayTrigger placement="bottom" overlay=<Tooltip id="total-length-tooltip">Delete</Tooltip>>
+                  <Button variant="outline-danger" size="sm" onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDeleteModal(true);
+                    setDeleteConversationId(conversation.id);
+                  }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-trash" viewBox="0 0 16 16">
+                      <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+                      <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
+                    </svg>
+                  </Button>
+                </OverlayTrigger>
               </div>
             </div>
           </ListGroup.Item>

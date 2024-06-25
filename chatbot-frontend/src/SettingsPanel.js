@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Modal, Tabs, Tab } from 'react-bootstrap';
 import ThemeSwitcher from './ThemeSwitcher';
-import ModelSelect from './ModelSelect'; // Import the new component
+import ModelSelect from './ModelSelect';
 import AppSettings from './AppSettings';
+import ChatSettings from './ChatSettings';
 
 const SettingsPanel = () => {
   const [showModal, setShowModal] = useState(false);
@@ -68,6 +69,9 @@ const SettingsPanel = () => {
             </Tab>
             <Tab eventKey="default" title="DefaultModel">
               <AppSettings cudaAvailable={cudaAvailable} availableModels={availableModels} showModal={showModal} setShowModal={setShowModal} />
+            </Tab>
+            <Tab eventKey="chat" title="Chat">
+              <ChatSettings showModal={showModal} setShowModal={setShowModal} />
             </Tab>
           </Tabs>
         </Modal.Body>

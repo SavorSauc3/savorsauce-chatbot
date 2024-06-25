@@ -11,7 +11,7 @@ const Chatbot = () => {
   const [totalLength, setTotalLength] = useState(0);
 
   return (
-    <Container style={{ marginTop: '20px', height: 'calc(100vh - 20px)', width: '100%' }}>
+    <Container style={{ marginTop: '20px', height: 'calc(100vh - 20px)', width: '100%' }}> 
       <Row style={{ height: '100%', width: '100%', alignItems: 'stretch' }}>
         <Col style={{ flex: 1 }}>
           <ConversationList

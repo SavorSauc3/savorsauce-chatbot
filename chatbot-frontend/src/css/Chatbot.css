@@ -1,5 +1,5 @@
 /* Chatbot.scss */
-@import "~bootswatch/dist/quartz/bootstrap.min.css";
+@import "~bootswatch/dist/darkly/bootstrap.min.css";
 *::-webkit-scrollbar {
   width: 10px; /* Width of the scrollbar */
 }
@@ -258,6 +258,15 @@
   padding: 10px;
 }
 
+#new-conv-button {
+  margin-right: 0;
+}
+
+#token-count {
+  margin-left: 10px;
+  padding: 10px;
+}
+
 .total-length {
   display: flex;
   font-size: 15px;
@@ -268,8 +277,15 @@
   border-radius: 10px;
 }
 
+#total-length-tooltip {
+  padding-left: 5px;
+}
+
 .conversation-list {
   max-width: 20vw;
+  max-height: 50vh; /* Ensure the conversation list doesn't exceed 50% of the viewport height */
+  overflow-y: auto; /* Add vertical scrollbar when content exceeds the height */
+  overflow-x: hidden; /* Prevent horizontal scrolling */
 }
 .conversation-list .conversation-item {
   cursor: pointer;
@@ -283,20 +299,26 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  overflow-x: hidden; /* Prevent horizontal scrolling within the content */
 }
 .conversation-list .conversation-item .conversation-content .conversation-name {
   flex: 1;
-  max-width: 70%;
+  max-width: 60%;
+  overflow: hidden; /* Ensure content does not overflow */
+  text-overflow: ellipsis; /* Add ellipsis for overflowing text */
+  white-space: nowrap; /* Prevent text from wrapping */
 }
 .conversation-list .conversation-item .conversation-content .conversation-actions {
   display: flex;
   gap: 5px;
+  margin-right: 20px;
 }
 .conversation-list .conversation-item .conversation-content .conversation-actions button {
   display: inline-flex;
   justify-content: center;
   align-items: center;
   padding: 0.2rem 0.4rem;
+  overflow: hidden; /* Ensure button content does not overflow */
 }
 
 /*# sourceMappingURL=Chatbot.css.map */
