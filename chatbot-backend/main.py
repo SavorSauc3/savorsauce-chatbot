@@ -1,16 +1,54 @@
 import asyncio
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body, Query
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body, Query, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from pathlib import Path
 import os
 import json
 import uuid
 import uvicorn
+import shutil
 import subprocess
 from llama_cpp import Llama
 
+# Define paths and directories
+conversations_dir = "conversations"
+models_dir = "models"
+model_metadata_file = os.path.join(models_dir, "model_metadata.json")
+index_file = os.path.join(conversations_dir, "index.json")
+settings_file = "app_settings.json"
+
+# Ensure directories exist
+os.makedirs(conversations_dir, exist_ok=True)
+os.makedirs(models_dir, exist_ok=True)
+
+# Initialize settings if file does not exist
+if not os.path.exists(settings_file):
+    settings = {
+        "conversations_dir": conversations_dir,
+        "models_dir": models_dir,
+        "model_metadata_file": model_metadata_file,
+        "index_file": index_file,
+        "default_model": {
+        },
+        "load_on_startup": False,
+        "chat_params": {
+            "system_prompt": "Your system prompt here",
+            "temperature": 0.2,
+            "top_p": 0.95,
+            "top_k": 40
+        }
+    }
+    with open(settings_file, 'w') as f:
+        json.dump(settings, f, indent=2)
+
+# Load settings from app_settings.json
+with open(settings_file, 'r') as settings_file:
+    settings = json.load(settings_file)
+
 app = FastAPI()
 
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,7 +65,7 @@ with open('app_settings.json', 'r') as settings_file:
 # Directories and settings
 conversations_dir = settings['conversations_dir']
 models_dir = settings['models_dir']
-model_metadata_dir = settings['model_metadata_file']
+model_metadata_file = settings['model_metadata_file']
 index_file = settings['index_file']
 
 # Models
@@ -42,6 +80,10 @@ llama_model = None
 os.makedirs(conversations_dir, exist_ok=True)
 if not os.path.exists(index_file):
     with open(index_file, 'w') as f:
+        json.dump({}, f)
+
+if not os.path.exists(model_metadata_file):
+    with open(model_metadata_file, 'w') as f:
         json.dump({}, f)
 
 class Message(BaseModel):
@@ -65,8 +107,11 @@ class ChatParams(BaseModel):
     top_p: float = 0.95
     top_k: int = 40
 
+class FilePath(BaseModel):
+    path: str
+
 # CHAT PARAMETERS
-chat_params = ChatParams(system_prompt=settings['system_prompt'])
+chat_params = ChatParams(system_prompt=settings['chat_params']['system_prompt'])
 
 
 
@@ -91,6 +136,7 @@ async def update_theme(theme: Theme):
         return {"message": "Theme updated successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update theme: {str(e)}")
+    
 
     
 @app.get("/current_theme", response_model=Theme)
@@ -118,7 +164,7 @@ async def edit_chat_params(params: ChatParams):
     with open('app_settings.json', 'r') as settings_file:
         settings = json.load(settings_file)
 
-    settings['system_prompt'] = chat_params.system_prompt
+    settings['chat_params']['system_prompt'] = chat_params.system_prompt
 
     with open('app_settings.json', 'w') as settings_file:
         json.dump(settings, settings_file)
@@ -152,15 +198,15 @@ def is_conversation_name_taken(name):
     return False
 
 # Initialize the LLAMA model
-def init_model(model_name=default_model["model_name"], use_cuda=default_model["use_cuda"], n_gpu_layers=default_model["n_gpu_layers"], context_length=default_model["context_length"]):
+def init_model(model_name, use_cuda, n_gpu_layers, context_length):
     global current_model
     current_model = model_name
 
     # Check if model metadata exists in the JSON file
-    if not os.path.exists(model_metadata_dir):
+    if not os.path.exists(model_metadata_file):
         initialize_metadata_file()
     
-    with open(model_metadata_dir, 'r') as json_file:
+    with open(model_metadata_file, 'r') as json_file:
         metadata = json.load(json_file)
 
     # Initialize the model
@@ -187,7 +233,7 @@ def init_model(model_name=default_model["model_name"], use_cuda=default_model["u
         metadata[model_name] = model_metadata
 
         # Write updated metadata back to the file
-        with open(model_metadata_dir, 'w') as json_file:
+        with open(model_metadata_file, 'w') as json_file:
             json.dump(metadata, json_file, indent=2)
 
     return model
@@ -205,12 +251,12 @@ def convert_strings_to_ints(d):
 
 def initialize_metadata_file():
     # Initialize an empty metadata file if it doesn't exist
-    with open(model_metadata_dir, 'w') as json_file:
+    with open(model_metadata_file, 'w') as json_file:
         json.dump({}, json_file)
 
 def get_metadata(model_name):
     try:
-        with open(model_metadata_dir, 'r') as json_file:
+        with open(model_metadata_file, 'r') as json_file:
             metadata = json.load(json_file)
             return metadata.get(model_name, None)
     except FileNotFoundError:
@@ -223,7 +269,7 @@ async def get_model_metadata(model_name: str):
 
 # Load the model once during startup
 if load_on_startup:
-    llama_model = init_model()
+    llama_model = init_model(model_name=settings['model_name'], use_cuda=settings['use_cuda'], n_gpu_layers=settings['n_gpu_layers'], context_length=settings['context_length'])
 
 @app.post("/conversations")
 async def create_conversation():

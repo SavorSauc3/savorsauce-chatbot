@@ -2,7 +2,7 @@
 // Import Bootstrap variables and functions
 
 // Import the specific Bootswatch theme
-@import "~bootswatch/dist/darkly/bootstrap.min.css";
+@import "~bootswatch/dist/slate/bootstrap.min.css";
 
 // Global scrollbar styling
 *::-webkit-scrollbar {
@@ -31,6 +31,16 @@
   overflow-y: auto; /* Ensure scrollbar appears only when needed */
   padding: 5px; /* Adjust padding as needed */
   height: 95vh;
+}
+
+#delete-selected-btn {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+#toggle-select-btn {
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 .message-bubble {
