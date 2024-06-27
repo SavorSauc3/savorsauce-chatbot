@@ -2,7 +2,7 @@
 // Import Bootstrap variables and functions
 
 // Import the specific Bootswatch theme
-@import "~bootswatch/dist/slate/bootstrap.min.css";
+@import "~bootswatch/dist/darkly/bootstrap.min.css";
 
 // Global scrollbar styling
 *::-webkit-scrollbar {
@@ -260,6 +260,16 @@
   display: flex;
   align-items: center;
   padding: 10px;
+}
+
+#enable-cuda {
+  padding: 10px
+}
+
+#model-name {
+  background-color: var(--bs-primary);
+  border-radius: 10px;
+  margin: 10px;
 }
 
 .message-input {

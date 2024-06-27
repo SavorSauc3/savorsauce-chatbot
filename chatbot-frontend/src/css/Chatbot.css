@@ -1,5 +1,5 @@
 /* Chatbot.scss */
-@import "~bootswatch/dist/slate/bootstrap.min.css";
+@import "~bootswatch/dist/darkly/bootstrap.min.css";
 *::-webkit-scrollbar {
   width: 10px; /* Width of the scrollbar */
 }
@@ -254,6 +254,16 @@
   display: flex;
   align-items: center;
   padding: 10px;
+}
+
+#enable-cuda {
+  padding: 10px;
+}
+
+#model-name {
+  background-color: var(--bs-primary);
+  border-radius: 10px;
+  margin: 10px;
 }
 
 .message-input {

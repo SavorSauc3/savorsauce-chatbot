@@ -68,8 +68,14 @@ models_dir = settings['models_dir']
 model_metadata_file = settings['model_metadata_file']
 index_file = settings['index_file']
 
+class LlamaModel(BaseModel):
+    model_name: str
+    use_cuda: bool
+    n_gpu_layers: int
+    context_length: int
+
 # Models
-current_model = None  # Changes to default on startup (if enabled)
+current_model = LlamaModel(model_name="No model selected", use_cuda=False, n_gpu_layers=0, context_length=512)  # Changes to default on startup (if enabled)
 default_model = settings['default_model']
 load_on_startup = settings['load_on_startup']
 
@@ -100,6 +106,9 @@ class Theme(BaseModel):
 # Define a Pydantic model for the request body
 class LoadOnStartupRequest(BaseModel):
     load_on_startup: bool
+
+class DeleteModelRequest(BaseModel):
+    path: str
 
 class ChatParams(BaseModel):
     system_prompt: str = None
@@ -137,7 +146,36 @@ async def update_theme(theme: Theme):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update theme: {str(e)}")
     
-
+@app.post("/delete_model")
+async def delete_model(request: DeleteModelRequest):
+    path = request.path
+    try:
+        # Delete model directory
+        model_path = os.path.join(models_dir, path)
+        os.remove(model_path)
+        
+        # Check if model exists in metadata and remove it
+        with open(model_metadata_file, 'r') as f:
+            metadata = json.load(f)
+            if path in metadata:
+                # Remove from metadata
+                del metadata[path]
+                # Write updated metadata
+                with open(model_metadata_file, 'w') as f:
+                    json.dump(metadata, f, indent=2)
+        
+        return {"message": f"Model '{path}' deleted successfully."}
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=f"Failed to delete model '{path}': {str(e)}")
+    
+@app.post("/upload")
+async def upload_files(files: list[UploadFile] = File(...)):
+    for file in files:
+        file_location = Path(models_dir) / file.filename
+        with open(file_location, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+    return {"message": "Files uploaded successfully!"}
     
 @app.get("/current_theme", response_model=Theme)
 async def get_current_theme():
@@ -197,10 +235,14 @@ def is_conversation_name_taken(name):
                 return True
     return False
 
+def initialize_metadata_file():
+    # Initialize an empty metadata file if it doesn't exist
+    with open(model_metadata_file, 'w') as json_file:
+        json.dump({}, json_file)
+
 # Initialize the LLAMA model
 def init_model(model_name, use_cuda, n_gpu_layers, context_length):
     global current_model
-    current_model = model_name
 
     # Check if model metadata exists in the JSON file
     if not os.path.exists(model_metadata_file):
@@ -222,6 +264,11 @@ def init_model(model_name, use_cuda, n_gpu_layers, context_length):
         model_kwargs["n_ctx"] = context_length
 
     model = Llama(**model_kwargs,)
+
+    current_model = LlamaModel(model_name=model_name,
+                               use_cuda=use_cuda,
+                               n_gpu_layers= 0 if n_gpu_layers is None else n_gpu_layers,
+                               context_length=context_length)
     
     if not get_metadata(model_name):
         model_metadata = model.metadata
@@ -249,10 +296,6 @@ def convert_strings_to_ints(d):
             d[key] = convert_strings_to_ints(value)
     return d
 
-def initialize_metadata_file():
-    # Initialize an empty metadata file if it doesn't exist
-    with open(model_metadata_file, 'w') as json_file:
-        json.dump({}, json_file)
 
 def get_metadata(model_name):
     try:
@@ -323,7 +366,7 @@ async def get_default_model():
 
 @app.get("/current_model")
 async def get_current_model():
-    return {"current_model": current_model, "model_metadata": get_metadata(current_model)}
+    return {"current_model": current_model, "model_metadata": get_metadata(current_model.model_name)}
 
 @app.get("/conversations")
 async def list_conversations():

@@ -4,6 +4,7 @@ import ThemeSwitcher from './ThemeSwitcher';
 import ModelSelect from './ModelSelect';
 import AppSettings from './AppSettings';
 import ChatSettings from './ChatSettings';
+import DragAndDrop from './FileDrop';
 
 const SettingsPanel = () => {
   const [showModal, setShowModal] = useState(false);
@@ -72,6 +73,9 @@ const SettingsPanel = () => {
             </Tab>
             <Tab eventKey="chat" title="Chat">
               <ChatSettings showModal={showModal} setShowModal={setShowModal} />
+            </Tab>
+            <Tab eventKey="import" title="Import">
+              <DragAndDrop />
             </Tab>
           </Tabs>
         </Modal.Body>
