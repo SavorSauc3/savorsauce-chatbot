@@ -187,6 +187,8 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
         if (event.data === 'GENERATION_COMPLETE' || event.data === 'GENERATION_STOPPED') {
           setIsGeneratingResponse(false);
           setStreamType(null); // Reset stream type
+          socket.close();
+          openNewSocket();
         } else {
           setMessages((prevMessages) => {
             const updatedMessages = [...prevMessages];
