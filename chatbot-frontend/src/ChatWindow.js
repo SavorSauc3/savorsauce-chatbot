@@ -64,6 +64,7 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
         setSocket(null);
         setIsGeneratingResponse(false);
         setStreamType(null); // Reset stream type
+        fetchTotalLength(currentConversation); // Get the conversations token length
       };
 
       newSocket.onerror = (error) => {
@@ -116,6 +117,7 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
 
       setIsGeneratingResponse(true);
       setStreamType('new'); // Set stream type to new
+      fetchTotalLength(currentConversation); //Get the current conversation length
 
       if (socket && socket.readyState === WebSocket.OPEN) {
         console.log('Sending message to WebSocket:', input);

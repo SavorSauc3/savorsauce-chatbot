@@ -195,7 +195,7 @@ const ModelSelect = ({
     <Form>
       <div className="d-flex justify-content-between" style={{ height: '400px' }}>
         <div style={{ flex: '0 0 50%' }}>
-          <h5 id="model-name" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '10px', maxWidth: '380px' }}>
+          <h5 id="model-name" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '10px', maxWidth: '350px' }}>
             {tempSelectedModel || 'None selected'}
           </h5>
           <Form.Check
@@ -234,41 +234,54 @@ const ModelSelect = ({
             />
           </Form.Group>
 
-          <Button variant="secondary" onClick={handleCancel} disabled={loading} className="me-2">
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={saveSettings} disabled={loading}>
-            {loading ? <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> : 'Load'}
-          </Button>
+          <div className='d-flex justify-content-center'>
+            <Button variant="secondary" onClick={handleCancel} disabled={loading} className="me-2">
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={saveSettings} disabled={loading}>
+              {loading ? <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> : 'Load'}
+            </Button>
 
-          <Button variant="danger" onClick={handleEjectModel} disabled={loading} className="ms-2">
-            {loading ? <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> : 'Eject'}
-          </Button>
+            <Button variant="danger" onClick={handleEjectModel} disabled={loading} className="ms-2">
+              {loading ? <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> : 'Eject'}
+            </Button>
+          </div>
         </div>
 
-        <div style={{ flex: '0 0 50%', paddingLeft: '15px' }}>
-          <h5>Available Models</h5>
+        <div style={{ flex: '0 0 50%', paddingLeft: '15px', textAlign: 'center' }}>
+          <h5 style={{padding: '10px'}}>Available Models</h5>
           <ul className="list-group" style={{ overflowY: 'scroll', maxHeight: '350px' }}>
             {availableModels.map((model, index) => (
               <li
                 key={index}
-                className={`list-group-item ${model === tempSelectedModel ? 'bg-secondary text-white' : ''}`}
+                className={`list-group-item ${model === tempSelectedModel ? 'bg-primary text-white' : 'bg-light text-black'}`}
                 onClick={() => handleModelSelect(model)}
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   maxWidth: '350px',
+                  cursor: 'pointer', // Ensure pointer cursor for the list item
+                  whitespace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
                 }}
                 title={model}
+                id='model-list-item'
               >
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{model}</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '80%', whiteSpace: 'nowrap' }}>{model}</span>
                 <Button
-                  variant="danger"
+                  variant="outline-danger"
                   size="sm"
-                  onClick={() => handleDeleteModel(model)}
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent triggering the li onClick
+                    handleDeleteModel(model);
+                  }}
                 >
-                  Delete
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" className="bi bi-trash" viewBox="0 0 16 16">
+                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+                    <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
+                  </svg>
                 </Button>
               </li>
             ))}

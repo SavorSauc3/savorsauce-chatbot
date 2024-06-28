@@ -53,7 +53,7 @@ const SettingsPanel = () => {
         <Modal.Header closeButton>
           <Modal.Title>Settings</Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body style={{ overflowY: 'auto', maxHeight: '70vh' }}>
           <Tabs defaultActiveKey="models" id="settings-tabs">
             <Tab eventKey="models" title="Models">
               <ModelSelect

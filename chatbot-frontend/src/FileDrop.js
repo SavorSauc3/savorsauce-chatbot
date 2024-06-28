@@ -92,7 +92,7 @@ const DragAndDrop = () => {
             Upload Files
           </button>
           {isUploading && (
-            <button className="btn btn-secondary mt-3 ml-2" onClick={handleCancelUpload}>
+            <button className="btn btn-secondary mt-3 ms-2" onClick={handleCancelUpload}>
               Cancel Upload
             </button>
           )}

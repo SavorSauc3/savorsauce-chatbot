@@ -1,5 +1,5 @@
 /* Chatbot.scss */
-@import "~bootswatch/dist/darkly/bootstrap.min.css";
+@import "~bootswatch/dist/quartz/bootstrap.min.css";
 *::-webkit-scrollbar {
   width: 10px; /* Width of the scrollbar */
 }
@@ -262,6 +262,7 @@
 
 #model-name {
   background-color: var(--bs-primary);
+  color: var(--bs-white);
   border-radius: 10px;
   margin: 10px;
 }
@@ -285,6 +286,11 @@
 #token-count {
   margin-left: 10px;
   padding: 10px;
+}
+
+#model-list-item {
+  background-color: var(--bs-primary);
+  color: var(--bs-white);
 }
 
 .total-length {
