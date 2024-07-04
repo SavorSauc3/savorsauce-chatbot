@@ -1,5 +1,5 @@
 /* Chatbot.scss */
-@import "~bootswatch/dist/quartz/bootstrap.min.css";
+@import "~bootswatch/dist/zephyr/bootstrap.min.css";
 *::-webkit-scrollbar {
   width: 10px; /* Width of the scrollbar */
 }
@@ -308,7 +308,7 @@
 }
 
 .conversation-list {
-  max-width: 20vw;
+  max-width: 25vw;
   max-height: 50vh; /* Ensure the conversation list doesn't exceed 50% of the viewport height */
   overflow-y: auto; /* Add vertical scrollbar when content exceeds the height */
   overflow-x: hidden; /* Prevent horizontal scrolling */
@@ -337,7 +337,7 @@
 .conversation-list .conversation-item .conversation-content .conversation-actions {
   display: flex;
   gap: 5px;
-  margin-right: 20px;
+  margin-left: auto; /* Push buttons to the right side */
 }
 .conversation-list .conversation-item .conversation-content .conversation-actions button {
   display: inline-flex;

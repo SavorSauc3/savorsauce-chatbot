@@ -1,0 +1,102 @@
+[
+    {
+        "themeName": "Cerulean",
+        "path": "themes/cerulean.css"
+    },
+    {
+        "themeName": "Cosmo",
+        "path": "themes/cosmo.css"
+    },
+    {
+        "themeName": "Cyborg",
+        "path": "themes/cyborg.css"
+    },
+    {
+        "themeName": "Darkly",
+        "path": "themes/darkly.css"
+    },
+    {
+        "themeName": "Flatly",
+        "path": "themes/flatly.css"
+    },
+    {
+        "themeName": "Journal",
+        "path": "themes/journal.css"
+    },
+    {
+        "themeName": "Litera",
+        "path": "themes/litera.css"
+    },
+    {
+        "themeName": "Lumen",
+        "path": "themes/lumen.css"
+    },
+    {
+        "themeName": "Lux",
+        "path": "themes/lux.css"
+    },
+    {
+        "themeName": "Materia",
+        "path": "themes/materia.css"
+    },
+    {
+        "themeName": "Minty",
+        "path": "themes/minty.css"
+    },
+    {
+        "themeName": "Morph",
+        "path": "themes/morph.css"
+    },
+    {
+        "themeName": "Pulse",
+        "path": "themes/pulse.css"
+    },
+    {
+        "themeName": "Quartz",
+        "path": "themes/quartz.css"
+    },
+    {
+        "themeName": "Sandstone",
+        "path": "themes/sandstone.css"
+    },
+    {
+        "themeName": "Simplex",
+        "path": "themes/simplex.css"
+    },
+    {
+        "themeName": "Sketchy",
+        "path": "themes/sketchy.css"
+    },
+    {
+        "themeName": "Slate",
+        "path": "themes/slate.css"
+    },
+    {
+        "themeName": "Solar",
+        "path": "themes/solar.css"
+    },
+    {
+        "themeName": "Spacelab",
+        "path": "themes/spacelab.css"
+    },
+    {
+        "themeName": "Superhero",
+        "path": "themes/superhero.css"
+    },
+    {
+        "themeName": "United",
+        "path": "themes/united.css"
+    },
+    {
+        "themeName": "Vapor",
+        "path": "themes/vapor.css"
+    },
+    {
+        "themeName": "Yeti",
+        "path": "themes/yeti.css"
+    },
+    {
+        "themeName": "Zephyr",
+        "path": "themes/zephyr.css"
+    }
+]

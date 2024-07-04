@@ -1,53 +1,97 @@
 {
-  "name": "chatbot-frontend",
-  "version": "0.1.0",
-  "private": true,
-  "dependencies": {
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "axios": "^1.7.2",
-    "bootstrap": "^5.3.3",
-    "bootswatch": "^5.3.3",
-    "classnames": "^2.5.1",
-    "concurrently": "^8.2.2",
-    "nanoid": "^5.0.7",
-    "npm-run-all": "^4.1.5",
-    "react": "^18.3.1",
-    "react-bootstrap": "^2.10.2",
-    "react-copy-to-clipboard": "^5.1.0",
-    "react-dom": "^18.3.1",
-    "react-markdown": "^9.0.1",
-    "react-scripts": "5.0.1",
-    "react-transition-group": "^4.4.5",
-    "sass": "^1.77.5",
-    "web-vitals": "^2.1.4"
-  },
-  "scripts": {
-    "start": "npm-run-all -p watch:sass start:react",
-    "compile:sass": "sass src/scss/Chatbot.scss src/css/Chatbot.css",
-    "watch:sass": "npm run compile:sass -- --watch",
-    "start:react": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  }
+    "name": "chatbot-frontend",
+    "version": "0.1.0",
+    "private": true,
+    "main": "src/main/main.js",
+    "description": "Luminaria, the decentralized, open source chatbot.",
+    "author": "Nathaniel Lybrand",
+    "dependencies": {
+        "@testing-library/jest-dom": "^5.17.0",
+        "@testing-library/react": "^13.4.0",
+        "@testing-library/user-event": "^13.5.0",
+        "axios": "^1.7.2",
+        "bootstrap": "^5.3.3",
+        "bootswatch": "^5.3.3",
+        "classnames": "^2.5.1",
+        "concurrently": "^8.2.2",
+        "electron-log": "^5.1.5",
+        "fastapi": "^0.0.8",
+        "nanoid": "^5.0.7",
+        "npm-run-all": "^4.1.5",
+        "react": "^18.3.1",
+        "react-bootstrap": "^2.10.2",
+        "react-copy-to-clipboard": "^5.1.0",
+        "react-dom": "^18.3.1",
+        "react-markdown": "^9.0.1",
+        "react-scripts": "5.0.1",
+        "react-transition-group": "^4.4.5",
+        "sass": "^1.77.5",
+        "web-vitals": "^2.1.4"
+    },
+    "devDependencies": {
+        "electron": "^31.1.0",
+        "electron-builder": "^24.6.0"
+    },
+    "scripts": {
+        "start": "npm-run-all -p watch:sass start:react electron",
+        "compile:sass": "sass src/scss/Chatbot.scss src/css/Chatbot.css",
+        "watch:sass": "npm run compile:sass -- --watch",
+        "start:react": "react-scripts start",
+        "build:react": "react-scripts build",
+        "build": "npm run build:react",
+        "test": "react-scripts test",
+        "eject": "react-scripts eject",
+        "electron": "electron .",
+        "package": "electron-builder"
+    },
+    "build": {
+        "appId": "com.luminaria.chat",
+        "extends": null,
+        "productName": "Luminaria",
+        "directories": {
+            "output": "dist"
+        },
+        "files": [
+            "build/**/*",
+            "src/main/**/*",
+            "package.json"
+        ],
+        "extraResources": [
+            {
+                "from": "src/main/bin/dist/main/",
+                "to": "bin/dist/main/",
+                "filter": [
+                    "**/*"
+                ]
+            }
+        ],
+        "win": {
+            "target": "nsis",
+            "icon": "src/main/assets/icon.ico"
+        },
+        "mac": {
+            "icon": "src/main/assets/icon.icns"
+        },
+        "linux": {
+            "icon": "src/main/assets"
+        }
+    },
+    "eslintConfig": {
+        "extends": [
+            "react-app",
+            "react-app/jest"
+        ]
+    },
+    "browserslist": {
+        "production": [
+            ">0.2%",
+            "not dead",
+            "not op_mini all"
+        ],
+        "development": [
+            "last 1 chrome version",
+            "last 1 firefox version",
+            "last 1 safari version"
+        ]
+    }
 }
