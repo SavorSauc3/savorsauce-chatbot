@@ -1,5 +1,5 @@
 {
-    "name": "chatbot-frontend",
+    "name": "luminaria",
     "version": "0.1.0",
     "private": true,
     "main": "src/main/main.js",
@@ -42,7 +42,9 @@
         "test": "react-scripts test",
         "eject": "react-scripts eject",
         "electron": "electron .",
-        "package": "electron-builder"
+        "package:win": "electron-builder --win",
+        "package:linux": "electron-builder --linux",
+        "package:mac": "electron-builder --mac"
     },
     "build": {
         "appId": "com.luminaria.chat",
@@ -73,6 +75,7 @@
             "icon": "src/main/assets/icon.icns"
         },
         "linux": {
+            "target": ["AppImage", "deb"],
             "icon": "src/main/assets"
         }
     },

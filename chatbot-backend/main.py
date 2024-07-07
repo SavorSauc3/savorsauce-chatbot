@@ -16,21 +16,21 @@ conversations_dir = "conversations"
 models_dir = "models"
 model_metadata_file = os.path.join(models_dir, "model_metadata.json")
 index_file = os.path.join(conversations_dir, "index.json")
-settings_file = "app_settings.json"
+settings_file_path = "app_settings.json"
 
 # Ensure directories exist
 os.makedirs(conversations_dir, exist_ok=True)
 os.makedirs(models_dir, exist_ok=True)
 
 # Initialize settings if file does not exist
-if not os.path.exists(settings_file):
+if not os.path.exists(settings_file_path):
     settings = {
         "conversations_dir": conversations_dir,
         "models_dir": models_dir,
         "model_metadata_file": model_metadata_file,
         "index_file": index_file,
-        "default_model": {
-        },
+        "theme": "quartz",
+        "default_model": {},
         "load_on_startup": False,
         "chat_params": {
             "system_prompt": "Your system prompt here",
@@ -39,12 +39,12 @@ if not os.path.exists(settings_file):
             "top_k": 40
         }
     }
-    with open(settings_file, 'w') as f:
+    with open(settings_file_path, 'w') as f:
         json.dump(settings, f, indent=2)
 
 # Load settings from app_settings.json
-with open(settings_file, 'r') as settings_file:
-    settings = json.load(settings_file)
+with open(settings_file_path, 'r') as f:
+    settings = json.load(f)
 
 app = FastAPI()
 
@@ -57,10 +57,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# Load settings from app_settings.json
-with open('app_settings.json', 'r') as settings_file:
-    settings = json.load(settings_file)
+# Load settings again (redundant, removed in revised code)
+# with open('app_settings.json', 'r') as f:
+#     settings = json.load(f)
 
 # Directories and settings
 conversations_dir = settings['conversations_dir']
@@ -81,7 +80,6 @@ load_on_startup = settings['load_on_startup']
 
 llama_model = None
 
-
 # Ensure the conversations directory and index file exist
 os.makedirs(conversations_dir, exist_ok=True)
 if not os.path.exists(index_file):
@@ -98,7 +96,6 @@ class Message(BaseModel):
 
 class Conversation(BaseModel):
     name: str
-
 
 class Theme(BaseModel):
     themePath: str
@@ -122,37 +119,32 @@ class FilePath(BaseModel):
 # CHAT PARAMETERS
 chat_params = ChatParams(system_prompt=settings['chat_params']['system_prompt'])
 
-
-
-# Define the path to the SCSS file
-SCSS_FILE_PATH = os.path.join("..", "chatbot-frontend", "src", "scss", "Chatbot.scss")
-
 @app.post("/update-theme")
 async def update_theme(theme: Theme):
     try:
-        # Read the current SCSS file content
-        with open(SCSS_FILE_PATH, "r") as scss_file:
-            lines = scss_file.readlines()
+        # Read the current app settings
+        with open(settings_file_path, "r") as f:
+            app_settings = json.load(f)
 
-        # Update only the line that contains the import statement
-        with open(SCSS_FILE_PATH, "w") as scss_file:
-            for line in lines:
-                if line.strip().startswith('@import "~bootswatch'):
-                    scss_file.write(f'@import "{theme.themePath}";\n')
-                else:
-                    scss_file.write(line)
+        # Update the theme in the settings, storing it in lowercase
+        app_settings["theme"] = theme.themePath.lower()
+
+        # Write the updated settings back to the file
+        with open(settings_file_path, "w") as f:
+            json.dump(app_settings, f, indent=4)
 
         return {"message": "Theme updated successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update theme: {str(e)}")
-    
+
+
 @app.post("/delete_model")
 async def delete_model(request: DeleteModelRequest):
     path = request.path
     try:
         # Delete model directory
         model_path = os.path.join(models_dir, path)
-        os.remove(model_path)
+        shutil.rmtree(model_path)
         
         # Check if model exists in metadata and remove it
         with open(model_metadata_file, 'r') as f:
@@ -168,7 +160,7 @@ async def delete_model(request: DeleteModelRequest):
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=f"Failed to delete model '{path}': {str(e)}")
-    
+
 @app.post("/upload")
 async def upload_files(files: list[UploadFile] = File(...)):
     for file in files:
@@ -176,17 +168,23 @@ async def upload_files(files: list[UploadFile] = File(...)):
         with open(file_location, "wb") as f:
             shutil.copyfileobj(file.file, f)
     return {"message": "Files uploaded successfully!"}
-    
+
 @app.get("/current_theme", response_model=Theme)
 async def get_current_theme():
     try:
-        with open(SCSS_FILE_PATH, "r") as scss_file:
-            for line in scss_file:
-                if line.strip().startswith('@import'):
-                    theme_path = line.strip().split('"')[1]
-                    return {"themePath": theme_path}
-        raise HTTPException(status_code=404, detail="Theme not found")
+        # Read the current app settings
+        with open(settings_file_path, "r") as f:
+            app_settings = json.load(f)
+
+        # Get the current theme from the settings
+        theme_path = app_settings.get("theme")
+        
+        if not theme_path:
+            raise HTTPException(status_code=404, detail="Theme not found")
+
+        return {"themePath": theme_path}
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail=f"Failed to fetch current theme: {str(e)}")
     
 @app.get("/chat_params", response_model=ChatParams)

@@ -5,6 +5,7 @@ import ModelSelect from './ModelSelect';
 import AppSettings from './AppSettings';
 import ChatSettings from './ChatSettings';
 import DragAndDrop from './FileDrop';
+import themes from './themes.json'; // Assuming you have a JSON file listing your themes
 
 const SettingsPanel = () => {
   const [showModal, setShowModal] = useState(false);
@@ -24,7 +25,37 @@ const SettingsPanel = () => {
         return;
       }
       const data = await response.json();
-      setSelectedTheme(data.themePath);
+      const themeName = data.themePath.toLowerCase();
+
+      // Find the path for the fetched theme
+      const selectedThemeObject = themes.find(theme => theme.themeName.toLowerCase() === themeName);
+      const themePath = selectedThemeObject ? selectedThemeObject.path : '';
+
+      // Update the selected theme state
+      setSelectedTheme(themeName);
+
+      // Update the theme dynamically
+      const linkElement = document.getElementById('themeStylesheet');
+      if (linkElement) {
+        linkElement.href = themePath; // Update the href attribute to switch the stylesheet
+      }
+
+      // Update the theme in the backend
+      try {
+        const response = await fetch('http://localhost:8000/update-theme', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ themePath: themeName }),
+        });
+
+        if (!response.ok) {
+          console.error('Failed to update theme:', response.statusText);
+        }
+      } catch (error) {
+        console.error('Failed to update theme:', error);
+      }
     } catch (error) {
       console.error('Failed to fetch current theme:', error);
     }
