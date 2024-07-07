@@ -1,5 +1,5 @@
 /* Chatbot.scss */
-@import "~bootswatch/dist/zephyr/bootstrap.min.css";
+@import "~bootswatch/dist/quartz/bootstrap.min.css";
 *::-webkit-scrollbar {
   width: 10px; /* Width of the scrollbar */
 }

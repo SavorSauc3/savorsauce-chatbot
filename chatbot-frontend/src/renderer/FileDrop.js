@@ -12,6 +12,11 @@ const DragAndDrop = () => {
     const files = Array.from(event.dataTransfer.files);
     setSelectedFiles(files);
     setUploadProgress(0);
+
+    // Log the file paths to the console
+    files.forEach(file => {
+      console.log(file.path);
+    });
   };
 
   const handleDragOver = (event) => {
@@ -56,6 +61,17 @@ const DragAndDrop = () => {
     }
   };
 
+  const handleLoadFromPath = async (file) => {
+    const filePath = file.path;
+    const modelName = file.name.split('.').slice(0, -1).join('.');
+    try {
+      const response = await axios.post('http://localhost:8000/load_from_path', { path: filePath, name: modelName });
+      console.log('File loaded successfully from path:', response.data);
+    } catch (error) {
+      console.error('Error loading file from path:', error);
+    }
+  };
+
   const handleCancelUpload = () => {
     if (uploadCancelToken.current) {
       uploadCancelToken.current.cancel();
@@ -85,6 +101,9 @@ const DragAndDrop = () => {
             {selectedFiles.map((file, index) => (
               <li key={index} className="list-group-item">
                 {file.name}
+                <button className="btn btn-primary mt-3 ms-2" onClick={() => handleLoadFromPath(file)}>
+                  Load from Path
+                </button>
               </li>
             ))}
           </ul>

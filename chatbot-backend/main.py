@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body, Query, UploadFile, File
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body, Query, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pathlib import Path
@@ -137,6 +137,33 @@ async def update_theme(theme: Theme):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update theme: {str(e)}")
 
+@app.post("/load_from_path")
+async def load_from_path(request: Request):
+    data = await request.json()
+    path = data.get('path')
+    name = data.get('name')
+
+    if not path or not name:
+        raise HTTPException(status_code=400, detail="Path and name are required")
+
+    try:
+        # Update models.json file
+        with open(model_metadata_file, 'r+') as f:
+            metadata = json.load(f)
+            metadata[name] = {"path": path}
+            f.seek(0)
+            json.dump(metadata, f, indent=2)
+            f.truncate()
+
+        return {"message": f"Model '{name}' loaded from path successfully."}
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=f"Failed to load model from path '{path}': {str(e)}")
+        
+        return {"message": f"Model '{name}' loaded from path '{path}' successfully."}
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=f"Failed to load model '{name}' from path '{path}': {str(e)}")
 
 @app.post("/delete_model")
 async def delete_model(request: DeleteModelRequest):
@@ -162,11 +189,25 @@ async def delete_model(request: DeleteModelRequest):
         raise HTTPException(status_code=500, detail=f"Failed to delete model '{path}': {str(e)}")
 
 @app.post("/upload")
-async def upload_files(files: list[UploadFile] = File(...)):
+async def upload_model(files: list[UploadFile] = File(...)):
     for file in files:
         file_location = Path(models_dir) / file.filename
         with open(file_location, "wb") as f:
             shutil.copyfileobj(file.file, f)
+    # Update metadata with path set to None
+    with open(model_metadata_file, 'r') as f:
+        metadata = json.load(f)
+    
+    for file in files:
+        file_location = Path(models_dir) / file.filename
+        model_name = file.filename.split('.')[0]
+        metadata[model_name] = {
+            "path": None
+        }
+    
+    with open(model_metadata_file, 'w') as f:
+        json.dump(metadata, f, indent=2)
+    
     return {"message": "Files uploaded successfully!"}
 
 @app.get("/current_theme", response_model=Theme)
@@ -249,9 +290,19 @@ def init_model(model_name, use_cuda, n_gpu_layers, context_length):
     with open(model_metadata_file, 'r') as json_file:
         metadata = json.load(json_file)
 
-    # Initialize the model
+    # Initialize the model path based on metadata
+    if model_name in metadata and 'path' in metadata[model_name] and metadata[model_name]['path'] is not None:
+        model_path = metadata[model_name]['path']
+    else:
+        model_path = f"./{models_dir}/{model_name}.gguf"
+
+    # Check if model path exists
+    if not os.path.exists(model_path):
+        raise ValueError(f"Model path '{model_path}' does not exist.")
+
+    # Initialize the model with appropriate arguments
     model_kwargs = {
-        "model_path": f"./{models_dir}/{model_name}",
+        "model_path": model_path,
         "verbose": True
     }
 
@@ -261,7 +312,7 @@ def init_model(model_name, use_cuda, n_gpu_layers, context_length):
     if context_length is not None:
         model_kwargs["n_ctx"] = context_length
 
-    model = Llama(**model_kwargs,)
+    model = Llama(**model_kwargs)
 
     current_model = LlamaModel(model_name=model_name,
                                use_cuda=use_cuda,
@@ -273,6 +324,12 @@ def init_model(model_name, use_cuda, n_gpu_layers, context_length):
 
         # Convert string numbers to integers
         model_metadata = convert_strings_to_ints(model_metadata)
+
+        # Check if metadata already exists and only update non-path attributes
+        if model_name in metadata:
+            existing_metadata = metadata[model_name]
+            if 'path' in existing_metadata:
+                model_metadata['path'] = existing_metadata['path']
 
         # Update metadata
         metadata[model_name] = model_metadata
@@ -299,7 +356,13 @@ def get_metadata(model_name):
     try:
         with open(model_metadata_file, 'r') as json_file:
             metadata = json.load(json_file)
-            return metadata.get(model_name, None)
+            model_metadata = metadata.get(model_name, None)
+            
+            if model_metadata and len(model_metadata) == 1 and 'path' in model_metadata:
+                return None  # Return None if only 'path' attribute exists
+            
+            return model_metadata
+        
     except FileNotFoundError:
         return None
 
@@ -400,11 +463,21 @@ async def get_conversation(conversation_id: str):
 
 @app.get("/models")
 async def list_models():
-    models = []
-    for filename in os.listdir(models_dir):
-        if filename.endswith(".gguf"):
-            models.append(filename)
-    return models
+    try:
+        with open(model_metadata_file, 'r') as f:
+            metadata = json.load(f)
+        
+        # Extract model names from metadata keys where path attribute is None or path exists
+        model_names = []
+        for model_name, model_data in metadata.items():
+            if 'path' not in model_data or model_data['path'] is None or os.path.exists(model_data['path']):
+                model_names.append(model_name)
+        
+        return model_names
+    
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail="Failed to list models")
 
 @app.get("/check_cuda")
 async def check_cuda():

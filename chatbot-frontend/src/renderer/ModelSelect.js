@@ -30,25 +30,23 @@ const ModelSelect = ({
               fetch('http://localhost:8000/models'),
               fetch('http://localhost:8000/check_cuda'),
             ]);
-  
+
           if (!currentModelResponse.ok) {
             throw new Error('Failed to fetch current model');
           }
           const currentModelData = await currentModelResponse.json();
           const modelMetadata = currentModelData.model_metadata;
-  
-          console.log(currentModelData);
-  
+
           const { model_name, n_gpu_layers, use_cuda, context_length } = currentModelData.current_model;
-  
+
           setSelectedModel(model_name || "No Model Selected");
           setGpuLayers(n_gpu_layers || 0);
           setUseCuda(use_cuda || false);
           setContextLength(context_length || 512);
-          setTempSelectedModel(model_name || "No Model Selected");  // Update this line
+          setTempSelectedModel(model_name || "No Model Selected");
           setAvailableModels(await availableModelsResponse.json());
           setCudaAvailable((await cudaAvailabilityResponse.json()).cuda_installed);
-  
+
           setMaxGpuLayers(modelMetadata['llama.block_count'] || 0);
           setMaxContextLength(modelMetadata['llama.context_length'] || 512);
           setGpuLayers(Math.floor(modelMetadata['llama.block_count'] / 2) || 0);
@@ -57,7 +55,7 @@ const ModelSelect = ({
           console.error('Failed to fetch initial data:', error);
         }
       };
-  
+
       fetchData();
     }
   }, [showModal]);
@@ -71,7 +69,6 @@ const ModelSelect = ({
       }
       const data = await response.json();
 
-      // Set or default to API values
       const defaultMaxGpuLayers = 0;
       const defaultMaxContextLength = 512;
       const fetchedMaxGpuLayers = data['llama.block_count'] || defaultMaxGpuLayers;
@@ -80,7 +77,6 @@ const ModelSelect = ({
       setMaxGpuLayers(fetchedMaxGpuLayers);
       setMaxContextLength(fetchedMaxContextLength);
 
-      // Calculate half values or default to half of defaults
       const fetchedGpuLayers = Math.floor(fetchedMaxGpuLayers / 2) || Math.floor(defaultMaxGpuLayers / 2);
       const fetchedContextLength = Math.floor(fetchedMaxContextLength / 2) || Math.floor(defaultMaxContextLength / 2);
 
@@ -88,7 +84,6 @@ const ModelSelect = ({
       setContextLength(fetchedContextLength);
     } catch (error) {
       console.error(`Failed to fetch metadata for ${model}:`, error);
-      // Reset to defaults on error
       setMaxGpuLayers(0);
       setGpuLayers(0);
       setContextLength(512);
@@ -181,10 +176,8 @@ const ModelSelect = ({
       const result = await response.json();
       console.log(result.message);
       
-      // Remove deleted model from availableModels state
       setAvailableModels(prevModels => prevModels.filter(model => model !== modelToDelete));
   
-      // Close delete confirmation modal
       setShowDeleteModal(false);
     } catch (error) {
       console.error('Failed to delete model:', error);
