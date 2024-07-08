@@ -21,15 +21,15 @@ function createWindow() {
         height: 720,
         icon: path.join(app.getAppPath(), '..', 'assets', 'icon.png'),
         webPreferences: {
-            // preload: path.join(__dirname, 'preload.js')
+            nodeIntegration: true,
+            contextIsolation: false
         }
     });
 
+    // Load the React app from the build directory in production or from the local server during development
     if (app.isPackaged) {
-        // Load the React app from the build directory in production
         mainWindow.loadFile(path.join(app.getAppPath(), 'build', 'index.html'));
     } else {
-        // Load the React app from the local server during development
         mainWindow.loadURL('http://localhost:3000');
     }
 

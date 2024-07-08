@@ -50,25 +50,27 @@ const DragAndDrop = () => {
           }
         },
       });
-      console.log('File uploaded successfully:', response.data);
+      console.log('Files uploaded successfully:', response.data);
     } catch (error) {
       if (axios.isCancel(error)) {
         console.log('File upload cancelled');
       } else {
-        console.error('Error uploading file:', error);
+        console.error('Error uploading files:', error);
       }
       setIsUploading(false);
     }
   };
 
-  const handleLoadFromPath = async (file) => {
-    const filePath = file.path;
-    const modelName = file.name.split('.').slice(0, -1).join('.');
+  const handleLoadFromPath = async () => {
     try {
-      const response = await axios.post('http://localhost:8000/load_from_path', { path: filePath, name: modelName });
-      console.log('File loaded successfully from path:', response.data);
+      const paths = selectedFiles.map(file => file.path);
+      const names = selectedFiles.map(file => file.name.split('.').slice(0, -1).join('.'));
+
+      const response = await axios.post('http://localhost:8000/load_from_path', { paths, names });
+      console.log('Files loaded successfully from path:', response.data);
+      setSelectedFiles([]);
     } catch (error) {
-      console.error('Error loading file from path:', error);
+      console.error('Error loading files from path:', error);
     }
   };
 
@@ -101,34 +103,36 @@ const DragAndDrop = () => {
             {selectedFiles.map((file, index) => (
               <li key={index} className="list-group-item">
                 {file.name}
-                <button className="btn btn-primary mt-3 ms-2" onClick={() => handleLoadFromPath(file)}>
-                  Load from Path
-                </button>
               </li>
             ))}
           </ul>
-          <button className="btn btn-primary mt-3" onClick={handleFileUpload} disabled={isUploading}>
-            Upload Files
-          </button>
-          {isUploading && (
-            <button className="btn btn-secondary mt-3 ms-2" onClick={handleCancelUpload}>
-              Cancel Upload
+          <div className="mt-3">
+            <button className="btn btn-primary" onClick={handleFileUpload} disabled={isUploading}>
+              Upload Files
             </button>
-          )}
-          {uploadProgress > 0 && (
-            <div className="progress mt-3">
-              <div
-                className={`progress-bar ${uploadProgress === 100 ? 'bg-success' : 'bg-primary'}`}
-                role="progressbar"
-                style={{ width: `${uploadProgress}%` }}
-                aria-valuenow={uploadProgress}
-                aria-valuemin="0"
-                aria-valuemax="100"
-              >
-                {uploadProgress.toFixed(2)}%
+            {isUploading && (
+              <button className="btn btn-secondary ms-2" onClick={handleCancelUpload}>
+                Cancel Upload
+              </button>
+            )}
+            <button className="btn btn-primary ms-2" disabled={isUploading} onClick={handleLoadFromPath}>
+              Load from Path
+            </button>
+            {uploadProgress > 0 && (
+              <div className="progress mt-2">
+                <div
+                  className={`progress-bar ${uploadProgress === 100 ? 'bg-success' : 'bg-primary'}`}
+                  role="progressbar"
+                  style={{ width: `${uploadProgress}%` }}
+                  aria-valuenow={uploadProgress}
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                >
+                  {uploadProgress.toFixed(2)}%
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
     </div>

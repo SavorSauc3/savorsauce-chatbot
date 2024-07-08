@@ -140,30 +140,35 @@ async def update_theme(theme: Theme):
 @app.post("/load_from_path")
 async def load_from_path(request: Request):
     data = await request.json()
-    path = data.get('path')
-    name = data.get('name')
+    paths = data.get('paths', [])
+    
+    if not paths:
+        raise HTTPException(status_code=400, detail="Paths are required")
 
-    if not path or not name:
-        raise HTTPException(status_code=400, detail="Path and name are required")
+    results = []
 
-    try:
-        # Update models.json file
-        with open(model_metadata_file, 'r+') as f:
-            metadata = json.load(f)
-            metadata[name] = {"path": path}
-            f.seek(0)
-            json.dump(metadata, f, indent=2)
-            f.truncate()
+    with open(model_metadata_file, 'r+') as f:
+        metadata = json.load(f)
 
-        return {"message": f"Model '{name}' loaded from path successfully."}
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail=f"Failed to load model from path '{path}': {str(e)}")
-        
-        return {"message": f"Model '{name}' loaded from path '{path}' successfully."}
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail=f"Failed to load model '{name}' from path '{path}': {str(e)}")
+    for path in paths:
+        name = os.path.basename(path).split('.')[0]
+        if name in metadata:
+            results.append({"message": f"Model '{name}' already exists and was skipped."})
+            continue
+        try:
+            # Update models.json file
+            with open(model_metadata_file, 'r+') as f:
+                metadata[name] = {"path": path}
+                f.seek(0)
+                json.dump(metadata, f, indent=2)
+                f.truncate()
+
+            results.append({"message": f"Model '{name}' loaded from path '{path}' successfully."})
+        except Exception as e:
+            print(e)
+            raise HTTPException(status_code=500, detail=f"Failed to load model '{name}' from path '{path}': {str(e)}")
+    
+    return results
 
 @app.post("/delete_model")
 async def delete_model(request: DeleteModelRequest):
@@ -190,20 +195,17 @@ async def delete_model(request: DeleteModelRequest):
 
 @app.post("/upload")
 async def upload_model(files: list[UploadFile] = File(...)):
+    with open(model_metadata_file, 'r') as f:
+        metadata = json.load(f)
+
     for file in files:
+        model_name = file.filename.split('.')[0]
+        if model_name in metadata:
+            continue
         file_location = Path(models_dir) / file.filename
         with open(file_location, "wb") as f:
             shutil.copyfileobj(file.file, f)
-    # Update metadata with path set to None
-    with open(model_metadata_file, 'r') as f:
-        metadata = json.load(f)
-    
-    for file in files:
-        file_location = Path(models_dir) / file.filename
-        model_name = file.filename.split('.')[0]
-        metadata[model_name] = {
-            "path": None
-        }
+        metadata[model_name] = {"path": None}
     
     with open(model_metadata_file, 'w') as f:
         json.dump(metadata, f, indent=2)
@@ -468,10 +470,29 @@ async def list_models():
             metadata = json.load(f)
         
         # Extract model names from metadata keys where path attribute is None or path exists
+        model_names_to_remove = []
         model_names = []
+        
         for model_name, model_data in metadata.items():
-            if 'path' not in model_data or model_data['path'] is None or os.path.exists(model_data['path']):
+            if model_data['path'] is None:
+                default_path = f"./{models_dir}/{model_name}.gguf"
+                if os.path.exists(default_path):
+                    model_names.append(model_name)
+                else:
+                    model_names_to_remove.append(model_name)
+            elif os.path.exists(model_data['path']):
                 model_names.append(model_name)
+            else:
+                model_names_to_remove.append(model_name)
+
+        # Remove entries from metadata
+        for model_name in model_names_to_remove:
+            del metadata[model_name]
+
+        # Write updated metadata back to the file if any entries were removed
+        if len(model_names_to_remove) > 0:
+            with open(model_metadata_file, 'w') as f:
+                json.dump(metadata, f, indent=2)
         
         return model_names
     

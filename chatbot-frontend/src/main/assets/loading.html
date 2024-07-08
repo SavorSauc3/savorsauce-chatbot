@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loading</title>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #ffffff;
+        }
+        .loading-container {
+            text-align: center;
+        }
+        .loading-svg {
+            width: 300px;
+            height: 300px;
+            animation: popup 0.5s ease-out forwards, breathing 2s ease-in-out infinite;
+        }
+        @keyframes popup {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        @keyframes breathing {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.2);
+            }
+        }
+        .loading-dots {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .dot {
+            width: 20px;
+            height: 20px;
+            background-color: rgb(53,83,255);
+            border-radius: 50%;
+            margin: 0 5px;
+            animation: dot-animation 1.5s infinite;
+        }
+        .dot:nth-child(1) {
+            animation-delay: 0s;
+        }
+        .dot:nth-child(2) {
+            animation-delay: 0.3s;
+        }
+        .dot:nth-child(3) {
+            animation-delay: 0.6s;
+        }
+        @keyframes dot-animation {
+            0%, 100% {
+                opacity: 0;
+                transform: translateY(0);
+            }
+            50% {
+                opacity: 1;
+                transform: translateY(-10px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-container">
+        <svg class="loading-svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="1080" height="1080" viewBox="0 0 1080 1080" xml:space="preserve">
+            <desc>Created with Fabric.js 5.2.4</desc>
+            <defs>
+            </defs>
+            <rect x="0" y="0" width="100%" height="100%" fill="transparent"></rect>
+            <g transform="matrix(1 0 0 1 540 540)" id="214dbbe1-749a-47f6-b88f-aa1590644b88">
+                <rect style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-dashoffset: 0; stroke-linejoin: miter; stroke-miterlimit: 4; fill: rgb(255,255,255); fill-rule: nonzero; opacity: 1; visibility: hidden;" vector-effect="non-scaling-stroke" x="-540" y="-540" rx="0" ry="0" width="1080" height="1080" />
+            </g>
+            <g transform="matrix(1 0 0 1 540 540)" id="67df6231-41ee-434a-a3f2-8fdbe5ef78f5">
+            </g>
+            <g transform="matrix(8.09 0 0 8.09 540 540)" id="19f1d1bf-1606-43e0-bbf0-917f32315ae9">
+                <circle style="stroke: rgb(0,0,0); stroke-width: 0; stroke-dasharray: none; stroke-linecap: butt; stroke-dashoffset: 0; stroke-linejoin: miter; stroke-miterlimit: 4; fill: rgb(255,255,255); fill-rule: nonzero; opacity: 1;" vector-effect="non-scaling-stroke" cx="0" cy="0" r="35" />
+            </g>
+            <g transform="matrix(1 0 0 1 540 540)">
+                <path style="stroke: rgb(0,0,0); stroke-width: 0; stroke-dasharray: none; stroke-linecap: butt; stroke-dashoffset: 0; stroke-linejoin: miter; stroke-miterlimit: 4; fill: rgb(53,83,255); fill-rule: nonzero; opacity: 1;" vector-effect="non-scaling-stroke" transform=" translate(-224, -256)" d="M 64 224 L 77.5 224 C 102.2 280.5 158.4 320 224 320 C 289.6 320 345.8 280.5 370.5 224 L 384 224 C 392.8 224 400 216.8 400 208 L 400 112 C 400 103.2 392.8 96 384 96 L 370.5 96 C 345.8 39.5 289.6 0 224 0 C 158.39999999999998 0 102.2 39.5 77.5 96 L 64 96 C 55.2 96 48 103.2 48 112 L 48 208 C 48 216.8 55.2 224 64 224 z M 104 136 C 104 113.9 125.5 96 152 96 L 296 96 C 322.5 96 344 113.9 344 136 L 344 160 C 344 213 301 256 248 256 L 200 256 C 147 256 104 213 104 160 L 104 136 z M 176 208 L 188 172 L 224 160 L 188 148 L 176 112 L 164 148 L 128 160 L 164 172 L 176 208 z M 327.6 321.4 C 297.7 340.7 262.2 352 224 352 C 185.8 352 150.3 340.7 120.4 321.4 C 52.9 328.5 0 385 0 454.4 L 0 464 C 0 490.5 21.5 512 48 512 L 128 512 L 128 448 C 128 430.3 142.3 416 160 416 L 288 416 C 305.7 416 320 430.3 320 448 L 320 512 L 400 512 C 426.5 512 448 490.5 448 464 L 448 454.4 C 448 385 395.1 328.5 327.6 321.4 z M 272 448 C 263.2 448 256 455.2 256 464 C 256 472.8 263.2 480 272 480 C 280.8 480 288 472.8 288 464 C 288 455.2 280.8 448 272 448 z M 176 448 C 167.2 448 160 455.2 160 464 L 160 512 L 192 512 L 192 464 C 192 455.2 184.8 448 176 448 z" stroke-linecap="round" />
+            </g>
+        </svg>
+        <div class="loading-dots">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+    </div>
+</body>
+</html>
