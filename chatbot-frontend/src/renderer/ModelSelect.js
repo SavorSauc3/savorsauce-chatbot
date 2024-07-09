@@ -161,23 +161,22 @@ const ModelSelect = ({
   };
 
   const confirmDeleteModel = async () => {
-    console.log(typeof(modelToDelete));
     try {
       const response = await fetch(`http://localhost:8000/delete_model`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ path: modelToDelete }), // Ensure path is a string
+        body: JSON.stringify({ path: modelToDelete }),
       });
       if (!response.ok) {
         throw new Error('Failed to delete model');
       }
       const result = await response.json();
       console.log(result.message);
-      
+
       setAvailableModels(prevModels => prevModels.filter(model => model !== modelToDelete));
-  
+
       setShowDeleteModal(false);
     } catch (error) {
       console.error('Failed to delete model:', error);
@@ -242,8 +241,8 @@ const ModelSelect = ({
         </div>
 
         <div style={{ flex: '0 0 50%', paddingLeft: '15px', textAlign: 'center' }}>
-          <h5 style={{padding: '10px'}}>Available Models</h5>
-          <ul className="list-group" style={{ overflowY: 'scroll', maxHeight: '350px' }}>
+          <h5 style={{ padding: '10px' }}>Available Models</h5>
+          <ul id="available-models-list" className="list-group" style={{ height: '350px', overflowY: 'auto', margin: 0, padding: 0 }}>
             {availableModels.map((model, index) => (
               <li
                 key={index}
@@ -253,9 +252,9 @@ const ModelSelect = ({
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  maxWidth: '350px',
-                  cursor: 'pointer', // Ensure pointer cursor for the list item
-                  whitespace: 'nowrap',
+                  margin: '.5px 0', // Maintain vertical distance between items
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis'
                 }}
@@ -267,7 +266,7 @@ const ModelSelect = ({
                   variant="outline-danger"
                   size="sm"
                   onClick={(e) => {
-                    e.stopPropagation(); // Prevent triggering the li onClick
+                    e.stopPropagation();
                     handleDeleteModel(model);
                   }}
                 >
@@ -282,13 +281,12 @@ const ModelSelect = ({
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} className="justify-content-between">
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>Confirm Deletion</Modal.Title>
+          <Modal.Title>Delete Model</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          Are you sure you want to delete<br /> <strong>{modelToDelete}</strong>?
+          Are you sure you want to delete the model "{modelToDelete}"?
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>

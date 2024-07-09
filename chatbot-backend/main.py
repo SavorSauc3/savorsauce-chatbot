@@ -174,21 +174,31 @@ async def load_from_path(request: Request):
 async def delete_model(request: DeleteModelRequest):
     path = request.path
     try:
-        # Delete model directory
-        model_path = os.path.join(models_dir, path)
-        shutil.rmtree(model_path)
-        
-        # Check if model exists in metadata and remove it
+        # Load the metadata file
         with open(model_metadata_file, 'r') as f:
             metadata = json.load(f)
-            if path in metadata:
-                # Remove from metadata
-                del metadata[path]
-                # Write updated metadata
-                with open(model_metadata_file, 'w') as f:
-                    json.dump(metadata, f, indent=2)
-        
-        return {"message": f"Model '{path}' deleted successfully."}
+
+        if path in metadata:
+            model_data = metadata[path]
+            model_path = model_data['path']
+
+            # If model_path is None, delete the model directory from models_dir
+            if model_path is None:
+                model_path = os.path.join(models_dir, f"{path}.gguf")
+                if os.path.exists(model_path):
+                    shutil.rmtree(model_path)
+            
+            # Remove the entry from metadata
+            del metadata[path]
+            
+            # Write the updated metadata back to the file
+            with open(model_metadata_file, 'w') as f:
+                json.dump(metadata, f, indent=2)
+
+            return {"message": f"Model '{path}' deleted successfully."}
+        else:
+            raise HTTPException(status_code=404, detail=f"Model '{path}' not found in metadata")
+
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=f"Failed to delete model '{path}': {str(e)}")

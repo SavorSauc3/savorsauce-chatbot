@@ -227,9 +227,9 @@ const ChatWindow = ({ messages, setMessages, input, setInput, currentConversatio
             ))}
           </ListGroup>
         ) : (
-          <div className="d-flex flex-column justify-content-center align-items-center border border-info rounded p-5 bg-dark" style={{ height: '100%' }}>
-            <h3 className="mb-2">Select another conversation,</h3>
-            <h3>or create a new one</h3>
+          <div className="d-flex flex-column justify-content-center align-items-center border border-info rounded p-5 bg-gray text-white" style={{ height: '100%'}}>
+            <h3 className="text-info">Select another conversation,</h3>
+            <h3 className="text-info">or create a new one</h3>
           </div>
         )}
         <div ref={messagesEndRef} />
