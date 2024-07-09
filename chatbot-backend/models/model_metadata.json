@@ -23,5 +23,29 @@
     "tokenizer.ggml.bos_token_id": 128000,
     "tokenizer.chat_template": "{% set loop_messages = messages %}{% for message in loop_messages %}{% set content = '<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n'+ message['content'] | trim + '<|eot_id|>' %}{% if loop.index0 == 0 %}{% set content = bos_token + content %}{% endif %}{{ content }}{% endfor %}{% if add_generation_prompt %}{{ '<|start_header_id|>assistant<|end_header_id|>\n\n' }}{% endif %}",
     "path": "C:\\Users\\Nathaniel\\Documents\\Models\\Llama-3-8B-Instruct-abliterated-v2_q6.gguf"
+  },
+  "Screenshot 2024-07-04 173709": {
+    "path": "C:\\Users\\Nathaniel\\Pictures\\Screenshots\\Screenshot 2024-07-04 173709.png"
+  },
+  "Screenshot 2024-07-04 173730": {
+    "path": "C:\\Users\\Nathaniel\\Pictures\\Screenshots\\Screenshot 2024-07-04 173730.png"
+  },
+  "Screenshot 2024-06-18 161407": {
+    "path": "C:\\Users\\Nathaniel\\Pictures\\Screenshots\\Screenshot 2024-06-18 161407.png"
+  },
+  "Screenshot 2024-06-18 161446": {
+    "path": "C:\\Users\\Nathaniel\\Pictures\\Screenshots\\Screenshot 2024-06-18 161446.png"
+  },
+  "Screenshot 2024-06-18 161525": {
+    "path": "C:\\Users\\Nathaniel\\Pictures\\Screenshots\\Screenshot 2024-06-18 161525.png"
+  },
+  "Screenshot 2024-06-18 161602": {
+    "path": "C:\\Users\\Nathaniel\\Pictures\\Screenshots\\Screenshot 2024-06-18 161602.png"
+  },
+  "Screenshot 2024-06-18 161623": {
+    "path": "C:\\Users\\Nathaniel\\Pictures\\Screenshots\\Screenshot 2024-06-18 161623.png"
+  },
+  "Screenshot 2024-06-18 161647": {
+    "path": "C:\\Users\\Nathaniel\\Pictures\\Screenshots\\Screenshot 2024-06-18 161647.png"
   }
 }

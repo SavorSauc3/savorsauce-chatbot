@@ -18,7 +18,7 @@ log.transports.file.resolvePath = () => path.join(logDir, 'main.log');
 function createWindow() {
     mainWindow = new BrowserWindow({
         width: 1280,
-        height: 720,
+        height: 820,
         icon: path.join(app.getAppPath(), '..', 'assets', 'icon.png'),
         webPreferences: {
             nodeIntegration: true,
